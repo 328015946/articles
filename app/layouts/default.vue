@@ -13,7 +13,20 @@
     // 搜索后清空 (可选)
     // searchKeyword.value = ''
   }
+  // === 新增：获取未读消息数 ===
+  const { data: unreadData, refresh: refreshUnread } = await useFetch('/api/notifications/unread', {
+    // 只有当用户登录了才去查
+    immediate: !!user.value
+  })
 
+  // 监听用户状态：如果用户登录/登出，重新获取未读数
+  watch(user, newUser => {
+    if (newUser) {
+      refreshUnread()
+    } else {
+      unreadData.value = { count: 0 }
+    }
+  })
   const logout = () => {
     const token = useCookie('auth_token')
     token.value = null
@@ -61,7 +74,15 @@
               class="search-input" />
             <span class="search-icon" @click="handleSearch">🔍</span>
           </div>
-
+          <!-- ★★★ 新增：通知铃铛 ★★★ -->
+          <!-- 只有登录了才显示 -->
+          <NuxtLink v-if="user" to="/admin/notifications" class="icon-btn" title="消息通知">
+            <span class="bell-icon">🔔</span>
+            <!-- 小红点 -->
+            <span v-if="unreadData?.count > 0" class="badge">
+              {{ unreadData.count > 99 ? '99+' : unreadData.count }}
+            </span>
+          </NuxtLink>
           <!-- 1. 如果已登录 -->
           <div v-if="user" class="user-menu">
             <span class="welcome">你好, {{ user.nickname }}</span>
@@ -309,5 +330,75 @@
     color: var(--text-secondary);
     background: var(--bg-card);
     margin-top: 40px;
+  }
+  /* === 新增：铃铛按钮样式 === */
+  .icon-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: 0.3s;
+    text-decoration: none; /* 去掉下划线 */
+  }
+  .icon-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .bell-icon {
+    font-size: 20px;
+    /* 简单的摇晃动画 */
+  }
+  .icon-btn:hover .bell-icon {
+    animation: bell-shake 0.5s ease;
+  }
+
+  /* === 新增：小红点样式 === */
+  .badge {
+    position: absolute;
+    top: 2px;
+    right: 0px;
+    background-color: #ff4d4f; /* 鲜艳的红色 */
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    height: 16px;
+    min-width: 16px;
+    line-height: 16px;
+    text-align: center;
+    border-radius: 10px; /* 胶囊形状 */
+    padding: 0 4px;
+    box-shadow: 0 0 0 2px var(--accent-color); /* 这里的颜色要和导航栏背景色一致，形成镂空效果 */
+    box-sizing: border-box;
+  }
+
+  /* 定义摇晃动画 */
+  @keyframes bell-shake {
+    0% {
+      transform: rotate(0);
+    }
+    15% {
+      transform: rotate(15deg);
+    }
+    30% {
+      transform: rotate(-15deg);
+    }
+    45% {
+      transform: rotate(10deg);
+    }
+    60% {
+      transform: rotate(-10deg);
+    }
+    75% {
+      transform: rotate(5deg);
+    }
+    85% {
+      transform: rotate(-5deg);
+    }
+    100% {
+      transform: rotate(0);
+    }
   }
 </style>

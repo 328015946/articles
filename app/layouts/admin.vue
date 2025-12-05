@@ -42,6 +42,11 @@
         </NuxtLink>
         <!-- ★★★ 新增：修改密码 ★★★ -->
         <NuxtLink to="/admin/profile" class="menu-item" active-class="active"> ⚙️ 个人设置 </NuxtLink>
+        <NuxtLink to="/admin/notifications" class="menu-item" active-class="active">
+          🔔 消息中心
+          <!-- 如果你能做一个接口返回未读数，这里可以用 v-if 显示红点 -->
+          <!-- <span class="badge" v-if="unreadCount > 0">{{ unreadCount }}</span> -->
+        </NuxtLink>
         <div class="divider"></div>
         <NuxtLink to="/" class="menu-item">🏠 返回前台</NuxtLink>
         <button @click="logout" class="menu-item btn-logout">🚪 退出登录</button>

@@ -7,7 +7,9 @@
  * @Description: 注释
  */
 import Article from '../../models/Article'
-import jwt from 'jsonwebtoken' // <--- 补上这一行！
+import Comment from '../../models/Comment' // ★ 1. 引入评论模型
+import jwt from 'jsonwebtoken'
+
 export default defineEventHandler(async event => {
   const method = event.method
 
@@ -15,7 +17,7 @@ export default defineEventHandler(async event => {
   if (method === 'GET') {
     const query = getQuery(event)
 
-    // 1. 解析分页参数 (默认第1页，每页6条)
+    // 1. 解析分页参数
     const page = Number(query.page) || 1
     const limit = Number(query.limit) || 10
     const skip = (page - 1) * limit
@@ -25,39 +27,59 @@ export default defineEventHandler(async event => {
     if (query.categoryId) filter.category = query.categoryId
     if (query.recommended === 'true') filter.isRecommended = true
 
-    // 3. 并行执行：查数据 + 查总数
-    const [list, total] = await Promise.all([
+    // 3. 并行执行：查文章原始数据 + 查总数
+    const [articles, total] = await Promise.all([
       Article.find(filter)
-        .populate('category')
-        .sort({ createdAt: -1 }) // 按时间倒序
-        .skip(skip) // 跳过前面 n 条
-        .limit(limit), // 取 m 条
+        .populate('category') // 关联分类信息
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
 
-      Article.countDocuments(filter) // 统计符合条件的有多少条
+      Article.countDocuments(filter)
     ])
 
-    // 4. 返回标准分页结构
+    // 4. ★★★ 核心修改：二次处理数据，补充点赞数和评论数 ★★★
+    // 使用 Promise.all 并发处理当前页的每一篇文章
+    const list = await Promise.all(
+      articles.map(async doc => {
+        // A. 把 mongoose 文档转成普通 JS 对象 (否则无法添加新属性)
+        const item = doc.toObject()
+
+        // B. 去 Comment 表查这篇文章有多少条评论
+        const commentCount = await Comment.countDocuments({ articleId: item._id })
+
+        // C. 返回组装好的新对象
+        return {
+          ...item,
+          // 计算点赞数 (likes 数组的长度)
+          likeCount: item.likes ? item.likes.length : 0,
+          // 放入查询到的评论数
+          commentCount: commentCount
+        }
+      })
+    )
+
+    // 5. 返回
     return {
-      list, // 当前页的文章数组
-      total, // 总条数
-      page, // 当前页码
-      limit // 每页条数
+      list, // 这里返回的是带有 likeCount 和 commentCount 的新数组
+      total,
+      page,
+      limit
     }
   }
 
+  // === POST: 发布文章 (保持不变) ===
   if (method === 'POST') {
-    // 1. 获取用户信息
     const token = getCookie(event, 'auth_token')
     if (!token) throw createError({ statusCode: 401, message: '请先登录' })
 
     const config = useRuntimeConfig()
     const decoded: any = jwt.verify(token, config.jwtSecret)
 
-    // 2. 写入数据库时，强制加上 author 字段
     const body = await readBody(event)
     return await Article.create({
       ...body,
-      author: decoded.id // ★ 关键：标记这篇文章是谁写的
+      author: decoded.id
     })
   }
 })

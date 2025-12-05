@@ -44,7 +44,23 @@
             <NuxtLink :to="`/article/${article._id}`">{{ article.title }}</NuxtLink>
           </h2>
           <p class="excerpt">{{ article.content.substring(0, 100).replace(/[#*`]/g, '') }}...</p>
-          <p class="meta">📅 {{ formatDate(article.createdAt) }} · 👁️ {{ article.views }} 阅读</p>
+          <div class="card-footer">
+            <div class="meta-info">
+              <!-- 原有的日期 -->
+              <span class="meta-item">📅 {{ formatDate(article.createdAt) }}</span>
+
+              <!-- 原有的阅读量 -->
+              <span class="meta-item">👁️ {{ article.views }}</span>
+
+              <!-- ★★★ 新增：点赞数 ★★★ -->
+              <span class="meta-item">❤ {{ article.likeCount || 0 }}</span>
+
+              <!-- ★★★ 新增：评论数 ★★★ -->
+              <span class="meta-item">💬 {{ article.commentCount || 0 }}</span>
+            </div>
+
+            <NuxtLink :to="`/article/${article._id}`" class="read-more">阅读 →</NuxtLink>
+          </div>
         </div>
       </article>
     </div>
@@ -144,5 +160,37 @@
     margin-top: 15px;
     color: #764ba2;
     font-weight: bold;
+  }
+  .card-footer {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    color: #999;
+    font-size: 0.85rem;
+  }
+  .meta-info {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* 图标之间的间距 */
+    color: #999;
+    font-size: 0.85rem;
+  }
+  .read-more {
+    color: #007bff;
+  }
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px; /* 图标和数字之间的微小间距 */
+  }
+
+  /* 针对点赞加个颜色 (可选) */
+  .meta-item:nth-child(3) {
+    /* color: #ff6b6b;  如果你想让爱心一直是红色的 */
+  }
+
+  /* 鼠标悬停时的效果 (可选) */
+  .article-card:hover .meta-info {
+    color: #666; /* 卡片悬停时文字变深一点 */
   }
 </style>

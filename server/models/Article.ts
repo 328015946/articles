@@ -13,6 +13,8 @@ const schema = new mongoose.Schema({
   // =====================
 
   isRecommended: { type: Boolean, default: false },
+  // ★★★ 新增：标签数组 ★★★
+  tags: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 })
 
