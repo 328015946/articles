@@ -1,115 +1,209 @@
+<!-- pages/admin/index.vue -->
 <script setup>
-definePageMeta({ layout: 'admin' })
+  import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend
+  } from 'chart.js'
+  import { Line } from 'vue-chartjs'
 
-// 1. 获取全局用户信息 (用于显示昵称和角色)
-const user = useUser()
+  ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
+  definePageMeta({ layout: 'admin' })
 
-// 2. 获取统计数据
-const { data: stats, pending } = await useFetch('/api/stats')
+  const { data: stats } = await useFetch('/api/admin/stats')
 
-// 3. 根据角色显示的文案
-const roleName = computed(() => user.value?.role === 'admin' ? '超级管理员' : '创作者')
-const welcomeMsg = computed(() => user.value?.role === 'admin'
-  ? '这里是全站控制中心，您可以管理所有内容。'
-  : '这里是您的个人创作空间，继续加油产出好内容！'
-)
+  // 判断是否是管理员
+  const isAdmin = computed(() => stats.value?.role === 'admin')
+
+  // --- 图表数据处理 (保持不变) ---
+  // pages/admin/index.vue
+
+  const chartData = computed(() => {
+    if (!stats.value?.chart) return { labels: [], datasets: [] }
+
+    const labels = []
+    const data = []
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+
+      // ★★★ 核心修复：手动拼接本地时间字符串 (YYYY-MM-DD)
+      // 这样能确保和你电脑右下角的时间一致
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}` // 生成 "2025-12-05"
+
+      labels.push(`${month}-${day}`) // 生成 "12-05"
+
+      // 查找对应日期的数据
+      const item = stats.value.chart.find(c => c._id === dateStr)
+      data.push(item ? item.count : 0)
+    }
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: isAdmin.value ? '全站发布趋势' : '我的创作趋势',
+          backgroundColor: '#f87979',
+          borderColor: '#1890ff',
+          data,
+          tension: 0.4,
+          fill: true
+        }
+      ]
+    }
+  })
+  const chartOptions = { responsive: true, maintainAspectRatio: false }
 </script>
 
 <template>
   <div class="dashboard">
-    <!-- 头部欢迎区 -->
-    <div class="welcome-header">
-      <h1>👋 欢迎回来，{{ user?.nickname }}</h1>
-      <span class="role-tag" :class="user?.role">{{ roleName }}</span>
-      <p class="subtitle">{{ welcomeMsg }}</p>
+    <h2 class="page-title">
+      {{ isAdmin ? '📊 全站运营概览' : '🎨 创作中心仪表盘' }}
+    </h2>
+
+    <div class="stats-grid">
+      <!-- 1. 文章卡片 -->
+      <div class="stat-card blue">
+        <div class="icon">📝</div>
+        <div class="info">
+          <!-- 动态文案 -->
+          <div class="label">{{ isAdmin ? '全站文章' : '我的文章' }}</div>
+          <div class="value">{{ stats?.overview?.articles || 0 }}</div>
+        </div>
+      </div>
+
+      <!-- 2. 用户卡片 (只有管理员可见) -->
+      <div v-if="isAdmin" class="stat-card green">
+        <div class="icon">👥</div>
+        <div class="info">
+          <div class="label">总用户数</div>
+          <div class="value">{{ stats?.overview?.users || 0 }}</div>
+        </div>
+      </div>
+
+      <!-- 3. 评论卡片 -->
+      <div class="stat-card purple">
+        <div class="icon">💬</div>
+        <div class="info">
+          <div class="label">{{ isAdmin ? '总评论数' : '收到的评论' }}</div>
+          <div class="value">{{ stats?.overview?.comments || 0 }}</div>
+        </div>
+      </div>
+
+      <!-- 4. 浏览量卡片 -->
+      <div class="stat-card orange">
+        <div class="icon">👀</div>
+        <div class="info">
+          <div class="label">{{ isAdmin ? '全站浏览量' : '文章阅读量' }}</div>
+          <div class="value">{{ stats?.overview?.views || 0 }}</div>
+        </div>
+      </div>
     </div>
 
-    <!-- 数据卡片区 -->
-    <div class="stats-cards">
-      <!-- 文章数卡片 -->
-      <div class="card blue">
-        <div class="card-icon">📝</div>
-        <div class="card-info">
-          <div class="label">{{ user?.role === 'admin' ? '全站文章数' : '我的文章数' }}</div>
-          <div class="number">
-            {{ pending ? '...' : (stats?.articleCount || 0) }}
-            <span class="unit">篇</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 阅读量卡片 -->
-      <div class="card purple">
-        <div class="card-icon">👁️</div>
-        <div class="card-info">
-          <div class="label">{{ user?.role === 'admin' ? '全站总阅读' : '我的总阅读' }}</div>
-          <div class="number">
-            {{ pending ? '...' : (stats?.totalViews || 0) }}
-            <span class="unit">次</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 这里可以预留第三个卡片，比如 "加入天数" 或者 "获赞数" -->
-      <div class="card green">
-        <div class="card-icon">📅</div>
-        <div class="card-info">
-          <div class="label">加入时间</div>
-          <div class="date-text">
-            {{ user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '刚刚' }}
-          </div>
-        </div>
+    <div class="chart-section">
+      <h3>{{ isAdmin ? '📈 站点内容增长趋势' : '📈 个人创作活跃度' }}</h3>
+      <div class="chart-container">
+        <ClientOnly>
+          <Line v-if="stats" :data="chartData" :options="chartOptions" />
+        </ClientOnly>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.dashboard { padding: 10px; }
-
-/* 欢迎区 */
-.welcome-header h1 { margin: 0 0 10px 0; display: inline-block; vertical-align: middle; }
-.role-tag {
-  display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 4px;
-  margin-left: 10px; vertical-align: middle; font-weight: bold;
-}
-.role-tag.admin { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; }
-.role-tag.user { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
-
-.subtitle { color: #888; margin-top: 5px; font-size: 14px; }
-
-/* 卡片容器 */
-.stats-cards { display: flex; gap: 24px; margin-top: 30px; flex-wrap: wrap; }
-
-/* 卡片通用样式 */
-.card {
-  flex: 1; min-width: 240px;
-  background: white; padding: 24px; border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #f0f0f0;
-  display: flex; align-items: center; gap: 20px;
-  transition: transform 0.2s;
-}
-.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-
-.card-icon {
-  width: 56px; height: 56px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px;
-}
-
-/* 不同颜色的卡片 */
-.card.blue .card-icon { background: #e6f7ff; }
-.card.blue .number { color: #1890ff; }
-
-.card.purple .card-icon { background: #f9f0ff; }
-.card.purple .number { color: #722ed1; }
-
-.card.green .card-icon { background: #f6ffed; }
-.card.green .date-text { color: #52c41a; font-size: 1.2rem; font-weight: bold; }
-
-/* 文字排版 */
-.card-info { flex: 1; }
-.label { color: #888; font-size: 14px; margin-bottom: 4px; }
-.number { font-size: 28px; font-weight: bold; line-height: 1; }
-.unit { font-size: 14px; font-weight: normal; color: #999; margin-left: 4px; }
+  /* 保持之前的 CSS 不变 */
+  .dashboard {
+    padding-bottom: 40px;
+  }
+  .page-title {
+    margin-bottom: 24px;
+    font-size: 20px;
+    color: #333;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 30px;
+  }
+  @media (max-width: 1000px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 600px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .stat-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+  .stat-card .icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-right: 16px;
+    background: #f5f5f5;
+  }
+  .stat-card.blue .icon {
+    background: #e6f7ff;
+    color: #1890ff;
+  }
+  .stat-card.green .icon {
+    background: #f6ffed;
+    color: #52c41a;
+  }
+  .stat-card.purple .icon {
+    background: #f9f0ff;
+    color: #722ed1;
+  }
+  .stat-card.orange .icon {
+    background: #fff7e6;
+    color: #fa8c16;
+  }
+  .info .label {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .info .value {
+    color: #333;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  .chart-section {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  .chart-container {
+    height: 350px;
+    position: relative;
+  }
 </style>

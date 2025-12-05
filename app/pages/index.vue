@@ -211,11 +211,13 @@
     gap: 20px;
   }
   .article-card {
-    background: white;
     padding: 25px;
     border-radius: 12px;
-    border: 1px solid #f0f0f0;
+
     transition: 0.2s;
+    background: var(--bg-card); /* 替换 white */
+    border: 1px solid var(--border-color); /* 替换 #f0f0f0 */
+    color: var(--text-primary);
   }
   .article-card:hover {
     transform: translateY(-3px);
@@ -262,10 +264,10 @@
     gap: 30px;
   }
   .sidebar-widget {
-    background: white;
     padding: 25px;
     border-radius: 12px;
-    border: 1px solid #f0f0f0;
+    background: var(--bg-card); /* 替换 white */
+    border: 1px solid var(--border-color);
   }
   .widget-title {
     margin-top: 0;
@@ -311,5 +313,38 @@
   .hot-views {
     font-size: 0.75rem;
     color: #999;
+  }
+  /* 3. 字体颜色 */
+  .card-title a {
+    color: var(--text-primary);
+  }
+  .card-excerpt {
+    color: var(--text-secondary);
+  }
+  .hot-title {
+    color: var(--text-primary);
+  }
+  .widget-title {
+    color: var(--text-primary);
+  }
+  .section-title {
+    color: var(--text-primary);
+  }
+  .subtitle {
+    color: var(--text-secondary);
+  }
+
+  /* 4. 分页按钮 */
+  .page-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
+  .page-btn:disabled {
+    background: var(--bg-body); /* 禁用时用深色一点的背景 */
+    opacity: 0.5;
+  }
+  .page-info {
+    color: var(--text-primary);
   }
 </style>

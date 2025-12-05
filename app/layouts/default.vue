@@ -5,6 +5,15 @@
   const user = useUser() // 获取全局用户状态
   const router = useRouter()
 
+  // === 2. 搜索逻辑 ===
+  const searchKeyword = ref('')
+  const handleSearch = () => {
+    if (!searchKeyword.value.trim()) return
+    router.push(`/search?q=${searchKeyword.value}`)
+    // 搜索后清空 (可选)
+    // searchKeyword.value = ''
+  }
+
   const logout = () => {
     const token = useCookie('auth_token')
     token.value = null
@@ -42,6 +51,17 @@
         <!-- 右侧 后台 -->
         <!-- 右侧区域 -->
         <div class="nav-right">
+          <!-- ★★★ 新增：搜索框 ★★★ -->
+          <div class="search-wrapper">
+            <input
+              type="text"
+              v-model="searchKeyword"
+              @keyup.enter="handleSearch"
+              placeholder="搜索..."
+              class="search-input" />
+            <span class="search-icon" @click="handleSearch">🔍</span>
+          </div>
+
           <!-- 1. 如果已登录 -->
           <div v-if="user" class="user-menu">
             <span class="welcome">你好, {{ user.nickname }}</span>
@@ -211,5 +231,83 @@
     border: 1px solid rgba(255, 255, 255, 0.5);
     color: white;
     cursor: pointer;
+  }
+  /* === 右侧样式 === */
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* 拉开间距 */
+  }
+
+  /* 搜索框样式 */
+  .search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-input {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    border-radius: 20px;
+    padding: 6px 12px 6px 30px; /* 左边留空给图标 */
+    color: white;
+    font-size: 13px;
+    width: 120px;
+    transition: width 0.3s;
+  }
+  .search-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .search-input:focus {
+    width: 180px; /* 聚焦时变长 */
+    background: rgba(255, 255, 255, 0.25);
+    outline: none;
+  }
+  .search-icon {
+    position: absolute;
+    left: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+
+  /* 主题切换按钮 */
+  .theme-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 5px;
+    transition: transform 0.2s;
+  }
+  .theme-btn:hover {
+    transform: scale(1.2);
+  }
+
+  /* 登录按钮样式沿用你的 */
+  .nav-btn {
+    background: white;
+    color: #764ba2;
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 12px;
+    border: none;
+    cursor: pointer;
+  }
+  .nav-btn.outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    color: white;
+  }
+  .nav-text {
+    color: white;
+    font-size: 14px;
+  }
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    margin-top: 40px;
   }
 </style>

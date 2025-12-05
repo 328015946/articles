@@ -40,7 +40,8 @@
         <NuxtLink v-if="user?.role === 'admin'" to="/admin/categories" class="menu-item" active-class="active">
           📂 分类管理
         </NuxtLink>
-
+        <!-- ★★★ 新增：修改密码 ★★★ -->
+        <NuxtLink to="/admin/profile" class="menu-item" active-class="active"> ⚙️ 个人设置 </NuxtLink>
         <div class="divider"></div>
         <NuxtLink to="/" class="menu-item">🏠 返回前台</NuxtLink>
         <button @click="logout" class="menu-item btn-logout">🚪 退出登录</button>
@@ -53,6 +54,10 @@
         <div class="user-info">
           <!-- 显示当前身份 -->
           <span class="role-badge">{{ user?.role === 'admin' ? '管理员' : '创作者' }}</span>
+          <img
+            v-if="user?.avatar"
+            :src="user.avatar"
+            style="width: 24px; height: 24px; border-radius: 50%; vertical-align: middle; margin-right: 5px" />
           {{ user?.nickname }}
         </div>
       </header>

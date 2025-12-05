@@ -12,5 +12,11 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   runtimeConfig: {
     jwtSecret: 'my-super-secret-key-change-this' // 随便写个复杂的字符串
+  },
+  modules: ['@nuxtjs/color-mode'],
+  colorMode: {
+    preference: 'system', // 默认跟随系统
+    fallback: 'light',
+    classSuffix: '' // 生成的类名是 .dark-mode 或 .light-mode，设为空则生成 .dark
   }
 })
