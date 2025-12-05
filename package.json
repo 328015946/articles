@@ -1,0 +1,28 @@
+{
+  "name": "xiao-nuxt",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "formidable": "^3.5.4",
+    "jsonwebtoken": "^9.0.3",
+    "markdown-it": "^14.1.0",
+    "md-editor-v3": "^6.2.0",
+    "mongoose": "^9.0.0",
+    "nuxt": "^4.2.1",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/formidable": "^3.4.6",
+    "@types/jsonwebtoken": "^9.0.10"
+  }
+}
