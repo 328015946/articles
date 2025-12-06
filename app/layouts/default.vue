@@ -14,7 +14,10 @@
   const { data: unreadData, refresh: refreshUnread } = await useFetch('/api/notifications/unread', {
     immediate: !!user.value
   })
-
+  // ★★★ 新增：获取我的统计数据 ★★★
+  const { data: myStats } = await useFetch('/api/users/stats', {
+    immediate: !!user.value
+  })
   watch(user, newUser => {
     if (newUser) refreshUnread()
     else unreadData.value = { count: 0 }
@@ -104,11 +107,47 @@
               <NuxtLink :to="`/user/${user._id || user.id}`">
                 <img :src="user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="avatar" />
               </NuxtLink>
-              <div class="dropdown-menu">
-                <NuxtLink :to="`/user/${user._id || user.id}`" class="dd-item">我的主页</NuxtLink>
-                <NuxtLink to="/admin/profile" class="dd-item">设置</NuxtLink>
-                <div class="dd-divider"></div>
-                <div @click="logout" class="dd-item logout">退出登录</div>
+              <!-- ★★★ 全新的下拉菜单 ★★★ -->
+              <div class="dropdown-menu card-mode">
+                <!-- 1. 头部：用户信息 -->
+                <div class="dd-header">
+                  <img :src="user.avatar" class="dd-avatar" />
+                  <div class="dd-info">
+                    <div class="dd-name">{{ user.nickname }}</div>
+                    <NuxtLink to="/user/coin" style="color: inherit; text-decoration: none">
+                      <span class="ore-icon">💎</span> 牛马币: {{ myStats?.coin || 0 }} >
+                    </NuxtLink>
+                  </div>
+                </div>
+
+                <!-- 2. 数据栏：关注/赞过/收藏 -->
+                <div class="dd-stats-row">
+                  <div class="stat-box">
+                    <div class="num">{{ myStats?.pinCount || 0 }}</div>
+                    <div class="label">沸点</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="num">{{ myStats?.followingCount || 0 }}</div>
+                    <div class="label">关注者</div>
+                  </div>
+                  <div class="stat-box">
+                    <div class="num">{{ myStats?.followerCount || 0 }}</div>
+                    <div class="label">关注</div>
+                  </div>
+                </div>
+
+                <!-- 3. 菜单网格 (Grid布局) -->
+                <div class="dd-grid-menu">
+                  <NuxtLink :to="`/user/${user._id || user.id}`" class="grid-item"> 👤 我的主页 </NuxtLink>
+                  <NuxtLink to="/admin" class="grid-item"> 🎁 创作中心 </NuxtLink>
+                  <NuxtLink to="/admin/profile" class="grid-item"> ⚙️ 个人设置 </NuxtLink>
+                  <NuxtLink to="/admin/publish" class="grid-item"> 📝 写文章 </NuxtLink>
+                </div>
+
+                <!-- 4. 底部列表 -->
+                <div class="dd-footer-list">
+                  <div class="list-item" @click="logout">退出登录</div>
+                </div>
               </div>
             </div>
           </div>
@@ -302,5 +341,104 @@
   .register-btn {
     color: #515767;
     padding: 0 10px;
+  }
+  /* === 下拉菜单美化 === */
+  .dropdown-menu.card-mode {
+    width: 260px; /* 变宽 */
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  /* 1. 头部 */
+  .dd-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f4f5f5;
+  }
+  .dd-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+  }
+  .dd-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #252933;
+    margin-bottom: 4px;
+  }
+  .dd-ore {
+    font-size: 12px;
+    color: #1e80ff;
+    background: #eaf2ff;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  /* 2. 数据栏 */
+  .dd-stats-row {
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 0;
+    border-bottom: 1px solid #f4f5f5;
+  }
+  .stat-box {
+    text-align: center;
+    cursor: pointer;
+  }
+  .stat-box .num {
+    font-size: 16px;
+    font-weight: bold;
+    color: #252933;
+  }
+  .stat-box .label {
+    font-size: 12px;
+    color: #8a919f;
+    margin-top: 2px;
+  }
+  .stat-box:hover .num {
+    color: #1e80ff;
+  }
+
+  /* 3. 网格菜单 */
+  .dd-grid-menu {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 两列 */
+    padding: 8px;
+    border-bottom: 1px solid #f4f5f5;
+  }
+  .grid-item {
+    display: block;
+    padding: 10px;
+    font-size: 13px;
+    color: #515767;
+    text-decoration: none;
+    border-radius: 4px;
+    text-align: left;
+  }
+  .grid-item:hover {
+    background: #f4f5f5;
+    color: #1e80ff;
+  }
+
+  /* 4. 底部列表 */
+  .dd-footer-list {
+    padding: 8px 0;
+  }
+  .list-item {
+    padding: 10px 20px;
+    font-size: 13px;
+    color: #515767;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .list-item:hover {
+    background: #f4f5f5;
+    color: #1e80ff;
   }
 </style>

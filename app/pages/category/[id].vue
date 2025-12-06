@@ -28,6 +28,11 @@
     const d = new Date(date)
     return d.toLocaleDateString()
   }
+
+  // === 新增：跳转文章详情 ===
+  const goDetail = id => {
+    router.push(`/article/${id}`)
+  }
 </script>
 
 <template>
@@ -64,7 +69,7 @@
 
         <!-- 文章列表 -->
         <div v-if="articles.length > 0" class="entry-list">
-          <div v-for="item in articles" :key="item._id" class="entry-item">
+          <div v-for="item in articles" :key="item._id" class="entry-item" @click="goDetail(item._id)">
             <div class="meta-row">
               <NuxtLink :to="`/user/${item.author?._id}`" class="author-link">
                 {{ item.author?.nickname || '牛马用户' }}
@@ -170,6 +175,7 @@
   }
   .icon {
     margin-right: 10px;
+    font-size: 18px;
     width: 20px;
     text-align: center;
   }

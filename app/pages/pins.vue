@@ -10,7 +10,7 @@
   })
 
   // === 右侧数据 ===
-  const { data: userStats } = await useFetch('/api/user/stats', { immediate: !!user.value })
+  const { data: userStats } = await useFetch('/api/users/stats', { immediate: !!user.value })
   const { data: featuredPins } = await useFetch('/api/pins/featured')
 
   // === 发布逻辑 ===
@@ -46,16 +46,23 @@
   const handlePublish = async () => {
     if (!user.value) return navigateTo('/login')
     if (!content.value.trim() && imageList.value.length === 0) return alert('内容不能为空')
+
     isPublishing.value = true
     try {
-      await $fetch('/api/pins', {
+      // ★★★ 核心修复：加上 const res =  ★★★
+      const res = await $fetch('/api/pins', {
         method: 'POST',
         body: { content: content.value, images: imageList.value }
       })
+
+      // 现在 res 有值了，这里就不会报错了
+      alert(res.message || '发布成功')
+
       content.value = ''
       imageList.value = []
       refresh()
     } catch (e) {
+      console.error(e) // 建议加上打印，方便以后排查是网络错误还是代码错误
       alert('发布失败')
     } finally {
       isPublishing.value = false

@@ -43,6 +43,10 @@
     if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
     return d.toLocaleDateString()
   }
+  // === 新增：跳转文章详情 ===
+  const goDetail = id => {
+    router.push(`/article/${id}`)
+  }
 </script>
 
 <template>
@@ -76,7 +80,7 @@
 
         <!-- 文章列表 -->
         <div class="entry-list">
-          <div v-for="item in articles" :key="item._id" class="entry-item">
+          <div v-for="item in articles" :key="item._id" class="entry-item" @click="goDetail(item._id)">
             <div class="meta-row">
               <!-- 显示真实作者 -->
               <NuxtLink :to="`/user/${item.author?._id}`" class="author-link">
@@ -108,7 +112,6 @@
         <!-- 签到卡片 (保持不变) -->
         <SignCard />
 
-        <!-- ★★★ 真实作者榜 ★★★ -->
         <!-- ★★★ 真实作者榜 ★★★ -->
         <div class="card rank-card">
           <div class="card-title">🎖️ 作者榜</div>

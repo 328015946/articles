@@ -1,72 +1,75 @@
+/*
+ * @Author: zengxiaobin
+ * @Date: 2025-12-05 18:49:48
+ * @LastEditors: xiaobin
+ * @LastEditTime: 2025-12-06 17:41:51
+ * @FilePath: \xiao-nuxt\server\api\articles\like.post.ts
+ * @Description: 注释
+ */
 // server/api/articles/like.post.ts
 import Article from '../../models/Article'
-import Notification from '../../models/Notification' // ★ 1. 引入通知模型
+import Notification from '../../models/Notification'
+import User from '../../models/User' // ★ 引入 User 模型
 import jwt from 'jsonwebtoken'
 
 export default defineEventHandler(async event => {
-  // 1. 校验登录
+  // ... (鉴权逻辑保持不变) ...
   const token = getCookie(event, 'auth_token')
-  if (!token) throw createError({ statusCode: 401, message: '请先登录' })
+  if (!token) throw createError({ statusCode: 401 })
   const config = useRuntimeConfig()
+  const decoded: any = jwt.verify(token, config.jwtSecret)
+  const userId = decoded.id
 
-  let userId
-  try {
-    const decoded: any = jwt.verify(token, config.jwtSecret)
-    userId = decoded.id
-  } catch (e) {
-    throw createError({ statusCode: 401, message: '登录已过期' })
-  }
-
-  // 2. 获取文章ID
   const body = await readBody(event)
   const articleId = body.articleId
 
-  // 3. 查文章
   const article = await Article.findById(articleId)
-  if (!article) throw createError({ statusCode: 404, message: '文章不存在' })
+  if (!article) throw createError({ statusCode: 404 })
 
-  // 4. 判断逻辑：点过没？
-  // 注意：Mongoose 的 ObjectId 比较建议转字符串，或者用 some
-  const isLiked = article.likes.some(id => id.toString() === userId)
+  const isLiked = article.likes.some((id: any) => id.toString() === userId)
 
   if (isLiked) {
-    // === 这种情况是：取消点赞 ===
+    // === 取消赞 ===
     await Article.findByIdAndUpdate(articleId, { $pull: { likes: userId } })
-
-    // (可选) 如果你想取消点赞时同时也撤回通知，可以在这里删除 Notification
-    // await Notification.findOneAndDelete({ recipient: article.author, sender: userId, type: 'like', article: articleId })
-
-    return { liked: false }
+    return { success: true, liked: false }
   } else {
-    // === 这种情况是：点赞 ===
+    // === 点赞 ===
     await Article.findByIdAndUpdate(articleId, { $addToSet: { likes: userId } })
 
     // ============================================
-    // ★★★ 发送通知 (修复版) ★★★
+    // ★★★ 新增：给作者加币逻辑 ★★★
+    // ============================================
     try {
+      // 只有不是自己给自己点赞时，才加币
       if (article.author.toString() !== userId) {
-        // 防止重复通知
-        const exists = await Notification.findOne({
+        // 1. 防止重复加币/重复通知机制
+        // 我们查一下是否给这个人发过该文章的 like 通知，如果发过，说明之前点过赞了，就不再加币
+        const hasNotified = await Notification.exists({
           recipient: article.author,
           sender: userId,
           type: 'like',
           article: article._id
         })
 
-        if (!exists) {
+        if (!hasNotified) {
+          // A. 给作者加 10 牛马币
+          await User.findByIdAndUpdate(article.author, { $inc: { coin: 10 } })
+
+          // B. 发送通知
           await Notification.create({
             recipient: article.author,
             sender: userId,
             type: 'like',
             article: article._id,
-            content: ''
+            content: '获得 +10 牛马币' // 在通知里备注一下
           })
         }
       }
     } catch (e) {
-      console.error('点赞通知失败:', e)
+      console.error('点赞奖励失败:', e)
     }
+    // ============================================
 
-    return { liked: true }
+    return { success: true, liked: true }
   }
 })
