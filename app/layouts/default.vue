@@ -35,10 +35,33 @@
       <div class="header-container">
         <div class="header-left">
           <NuxtLink to="/" class="logo">
-            <img
-              src="https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/e08da34488b114bd4c665ba2fa520a31.svg"
-              alt="Logo"
-              class="logo-img" />
+            <!-- 使用修改版 A -->
+            <svg
+              class="logo-img"
+              width="110"
+              height="28"
+              viewBox="0 0 110 28"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg">
+              <rect x="0" y="2" width="26" height="24" rx="6" fill="#1E80FF" />
+              <path
+                d="M7 9L12 14L7 19"
+                stroke="white"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round" />
+              <line x1="14" y1="19" x2="20" y2="19" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+              <text
+                x="34"
+                y="21"
+                font-family="system-ui, sans-serif"
+                font-weight="900"
+                font-size="20"
+                fill="#1E80FF"
+                letter-spacing="1">
+                牛马
+              </text>
+            </svg>
           </NuxtLink>
           <nav class="main-nav">
             <NuxtLink to="/" class="nav-link" active-class="active">首页</NuxtLink>

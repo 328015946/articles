@@ -132,10 +132,10 @@
         </div>
 
         <!-- 广告图 -->
-        <div class="card ad-card">
+        <!-- <div class="card ad-card">
           <img src="https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/img/default.640d9a7.png" />
           <span class="ad-tag">广告</span>
-        </div>
+        </div> -->
       </aside>
     </div>
   </div>
@@ -148,7 +148,7 @@
     padding-top: 20px;
   }
   .container {
-    max-width: 1300px; /* 掘金标准宽度 */
+    max-width: 1300px;
     margin: 0 auto;
     display: grid;
     grid-template-columns: 180px 1fr 260px; /* 经典三栏宽度 */
