@@ -125,6 +125,7 @@
       <slot />
     </main>
     <AppFooter />
+    <AppTabBar />
   </div>
 </template>
 

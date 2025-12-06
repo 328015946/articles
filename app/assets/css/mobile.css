@@ -1,0 +1,72 @@
+/* assets/css/mobile.css */
+
+/* === 移动端适配 (屏幕宽度小于 768px) === */
+@media screen and (max-width: 768px) {
+  /* 1. 强制容器变单栏，宽度 100% */
+  .container,
+  .header-container,
+  .footer-container {
+    display: block !important; /* 破坏 Grid/Flex 布局 */
+    width: 100% !important;
+    padding: 0 10px !important; /* 留点边距 */
+    box-sizing: border-box !important;
+  }
+
+  /* 2. 隐藏 PC 端专用的侧边栏 */
+  .sidebar-left,
+  .sidebar-right,
+  .left-col,
+  .right-col {
+    display: none !important;
+  }
+
+  /* 3. 顶部导航栏简化 */
+  .juejin-header .main-nav,
+  .juejin-header .search-box,
+  .juejin-header .creator-btn {
+    display: none !important; /* 手机端头部太挤，隐藏菜单和搜索 */
+  }
+
+  .juejin-header {
+    padding: 0 !important;
+    height: 50px !important;
+  }
+
+  .header-container {
+    display: flex !important; /* 头部还得是 Flex */
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px !important;
+  }
+
+  /* 4. 内容区域适配 */
+  .main-list,
+  .center-col {
+    width: 100% !important;
+    margin-bottom: 60px !important; /* 给底部导航栏留位置 */
+    box-shadow: none !important; /* 手机端去掉阴影更清爽 */
+  }
+
+  /* 文章/沸点卡片微调 */
+  .entry-item,
+  .pin-card {
+    padding: 15px !important;
+    border-radius: 0 !important; /* 手机端通常通栏 */
+    margin-bottom: 8px !important;
+  }
+
+  /* 字体微调 */
+  body {
+    font-size: 14px; /* 手机端字号稍微小一点点 */
+  }
+
+  h1 {
+    font-size: 20px !important;
+  }
+  h2 {
+    font-size: 18px !important;
+  }
+  .tech-list li {
+    justify-content: center;
+  }
+}

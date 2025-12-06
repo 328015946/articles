@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-05 11:44:21
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-05 14:47:47
+ * @LastEditTime: 2025-12-06 16:42:43
  * @FilePath: \xiao-nuxt\nuxt.config.ts
  * @Description: 注释
  */
@@ -18,5 +18,8 @@ export default defineNuxtConfig({
     preference: 'system', // 默认跟随系统
     fallback: 'light',
     classSuffix: '' // 生成的类名是 .dark-mode 或 .light-mode，设为空则生成 .dark
-  }
+  },
+  css: [
+    '~/assets/css/mobile.css' // 引入适配样式
+  ]
 })
