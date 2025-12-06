@@ -19,8 +19,13 @@
 
   // === 3. 点赞逻辑 ===
   const isLiked = computed(() => {
+    // 1. 先判断文章是否存在
     if (!user.value || !article.value) return false
-    return article.value.likes.some(like => {
+
+    // 2. ★★★ 关键修复：加一个 || [] 防止 likes 是 undefined ★★★
+    const likes = article.value.likes || []
+
+    return likes.some(like => {
       const likeId = typeof like === 'string' ? like : like._id
       return likeId === (user.value.id || user.value._id)
     })
@@ -108,6 +113,37 @@
       console.warn('找不到目标元素，ID为:', targetId)
     }
   }
+
+  // === 4. 收藏逻辑 (新增) ===
+  const isCollected = ref(article.value?.isCollected || false)
+  const collectionCount = ref(0) // 如果你想显示收藏数，需要后端支持，这里暂时本地维护
+
+  // 监听数据变化 (防止第一次加载没取到)
+  watch(
+    () => article.value,
+    newVal => {
+      if (newVal) {
+        isCollected.value = newVal.isCollected
+      }
+    }
+  )
+
+  const handleCollect = async () => {
+    if (!user.value) return alert('请先登录')
+    try {
+      const res = await $fetch(`/api/articles/${articleId}/collect`, { method: 'POST' })
+      // 更新状态
+      isCollected.value = res.isCollected
+      // 更新数量 (简单的 UI 欺骗，实际应该重新 fetch)
+      if (res.isCollected) collectionCount.value++
+      else collectionCount.value--
+
+      // 提示 (可选，现在样式变了可以去掉 alert)
+      // alert(res.isCollected ? '收藏成功！' : '已取消收藏')
+    } catch (e) {
+      alert('操作失败')
+    }
+  }
 </script>
 
 <template>
@@ -125,7 +161,9 @@
             <div class="article-meta">
               <span class="author">
                 <span class="avatar-tiny">{{ article.author?.nickname?.[0] || '站' }}</span>
-                {{ article.author?.nickname || '站长' }}
+                <NuxtLink :to="`/user/${article.author._id}`" class="author-name">
+                  {{ article.author?.nickname }}
+                </NuxtLink>
               </span>
               <span class="dot">·</span>
               <time>{{ formatDate(article.createdAt) }}</time>
@@ -138,11 +176,21 @@
             <MdPreview :editorId="editorId" :modelValue="article.content" showCodeRowNumber />
           </div>
 
+          <!-- template 中的 .like-section 部分 -->
           <div class="like-section">
-            <button class="btn-like" :class="{ active: isLiked }" @click="handleLike">
+            <!-- 点赞按钮 -->
+            <button class="btn-action btn-like" :class="{ active: isLiked }" @click="handleLike">
               <span class="icon">❤</span>
               <span>{{ isLiked ? '已赞' : '点赞' }}</span>
               <span class="count" v-if="article.likes.length > 0">{{ article.likes.length }}</span>
+            </button>
+
+            <!-- 收藏按钮 (修改后) -->
+            <button class="btn-action btn-collect" :class="{ active: isCollected }" @click="handleCollect">
+              <span class="icon">⭐</span>
+              <span>{{ isCollected ? '已收藏' : '收藏' }}</span>
+              <!-- 如果后端没返回收藏数，这个 count 可以先不显示 -->
+              <span class="count" v-if="collectionCount > 0">{{ collectionCount }}</span>
             </button>
           </div>
         </article>
@@ -216,7 +264,7 @@
     scroll-margin-top: 90px; /* 导航栏高度 + 一点间隙 */
   }
   .page-container {
-    max-width: 1100px;
+    max-width: 1300px;
     margin: 0 auto;
     padding: 20px;
     display: grid;
@@ -320,6 +368,39 @@
     background: #ff4757;
     color: white;
     box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+  }
+  .like-section {
+    text-align: center;
+    margin-top: 50px;
+    display: flex; /* 让两个按钮横向排列 */
+    justify-content: center;
+    gap: 20px; /* 按钮间距 */
+  }
+
+  /* 公共按钮样式 */
+  .btn-action {
+    padding: 10px 30px;
+    border-radius: 50px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+  }
+  /* 收藏按钮 (黄色/橙色) */
+  .btn-collect {
+    border: 1px solid #ffa502; /* 橙黄色 */
+    color: #ffa502;
+  }
+  .btn-collect:hover {
+    background: #fffbf0;
+  }
+  .btn-collect.active {
+    background: #ffa502;
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 165, 2, 0.3);
   }
   .comment-section {
     background: white;

@@ -3,7 +3,22 @@
   const route = useRoute()
   const router = useRouter()
   const user = useUser() // 获取当前用户信息
+  // === 1. 定义路径与中文标题的映射关系 ===
+  const titleMap = {
+    '/admin': '仪表盘',
+    '/admin/publish': '发布文章',
+    '/admin/articles': '全站文章管理',
+    '/admin/my-articles': '我的文章',
+    '/admin/categories': '分类管理',
+    '/admin/profile': '个人设置',
+    '/admin/notifications': '消息中心'
+  }
 
+  // === 2. 计算当前页面的中文标题 ===
+  const currentTitle = computed(() => {
+    // 如果字典里有，就显示中文；如果没有，兜底显示路径或默认文字
+    return titleMap[route.path] || '管理后台'
+  })
   const logout = () => {
     const token = useCookie('auth_token')
     token.value = null
@@ -55,7 +70,7 @@
 
     <main class="main-content">
       <header class="top-header">
-        <span class="breadcrumb">当前位置：{{ route.path }}</span>
+        <span class="breadcrumb">当前位置：{{ currentTitle }}</span>
         <div class="user-info">
           <!-- 显示当前身份 -->
           <span class="role-badge">{{ user?.role === 'admin' ? '管理员' : '创作者' }}</span>

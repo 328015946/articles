@@ -1,130 +1,140 @@
 <!-- pages/index.vue -->
 <script setup>
-  // === 1. 左侧文章列表 (带分页) ===
-  const page = ref(1) // 当前页码
-  const limit = 6 // 每页显示几条
+  const route = useRoute()
+  const router = useRouter()
+  const user = useUser()
 
-  // 请求接口 (注意：这里 page 是响应式的，页码变了会自动重新请求)
-  const { data: articleData, refresh } = await useFetch('/api/articles', {
-    query: {
-      page: page,
-      limit: limit
-    }
+  // 1. 获取分类
+  const { data: categories } = await useFetch('/api/categories')
+
+  // 2. 获取作者榜 (新增)
+  const { data: authorRank } = await useFetch('/api/authors/rank')
+
+  // 3. 文章列表 (带排序)
+  const page = ref(1)
+  const sortType = ref('new') // 默认最新
+
+  // 监听 sortType 和 page 的变化自动请求
+  const { data: res, refresh } = await useFetch('/api/articles', {
+    query: computed(() => ({
+      page: page.value,
+      limit: 10,
+      sort: sortType.value // 传给后端 'new' 或 'hot'
+    }))
   })
 
-  // 计算属性：方便模板里取用
-  const latestArticles = computed(() => articleData.value?.list || [])
-  const total = computed(() => articleData.value?.total || 0)
+  const articles = computed(() => res.value?.list || [])
 
-  // 翻页方法
-  const changePage = newPage => {
-    // 简单的边界检查
-    if (newPage < 1) return
-    const maxPage = Math.ceil(total.value / limit)
-    if (newPage > maxPage) return
-
-    page.value = newPage
-    // 滚动回到顶部，体验更好
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  // 切换 Tab
+  const switchTab = type => {
+    if (sortType.value === type) return // 点自己不刷新
+    sortType.value = type
+    page.value = 1 // 重置回第一页
+    // useFetch 会自动触发，因为 query 是 computed
   }
 
-  // === 2. 右侧热门文章 (适配新接口格式) ===
-  const { data: hotData } = await useFetch('/api/articles', {
-    // 热门文章不需要翻页，限制取前 5 条即可
-    query: { recommended: 'true', limit: 5 }
-  })
-  const hotArticles = computed(() => hotData.value?.list || [])
-
-  // === 工具函数 ===
-  const formatDate = dateStr => {
-    return new Date(dateStr).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  // 格式化时间
+  const formatTime = date => {
+    const d = new Date(date)
+    const now = new Date()
+    const diff = (now - d) / 1000
+    if (diff < 60) return '刚刚'
+    if (diff < 3600) return Math.floor(diff / 60) + '分钟前'
+    if (diff < 86400) return Math.floor(diff / 3600) + '小时前'
+    return d.toLocaleDateString()
   }
 </script>
 
 <template>
-  <div>
-    <!-- Hero 区域 -->
-    <section class="hero">
-      <div class="hero-content">
-        <h1>探索技术，记录点滴</h1>
-        <p>基于 Nuxt 4 + MongoDB 构建的全栈博客系统</p>
-      </div>
-    </section>
+  <div class="juejin-home">
+    <div class="container">
+      <!-- 左侧导航 (保持不变) -->
+      <nav class="sidebar-left">
+        <div class="nav-list">
+          <a class="nav-item" :class="{ active: !route.query.cat }" @click="router.push('/')">
+            <span class="icon">🧭</span> 综合
+          </a>
+          <NuxtLink
+            v-for="c in categories"
+            :key="c._id"
+            :to="`/category/${c._id}`"
+            class="nav-item"
+            active-class="active">
+            <span class="icon">📑</span> {{ c.name }}
+          </NuxtLink>
+        </div>
+      </nav>
 
-    <div class="container main-layout">
-      <!-- === 左侧：文章列表 === -->
-      <div class="content-col">
-        <div class="section-header">
-          <h2 class="section-title">📰 最新发布</h2>
-          <!-- 显示当前分页信息 -->
-          <span class="subtitle">Page {{ page }} / {{ Math.ceil(total / limit) || 1 }}</span>
+      <!-- 中间内容 -->
+      <main class="main-list">
+        <!-- 顶部 Tab：点击切换排序 -->
+        <div class="list-header">
+          <span :class="{ active: sortType === 'new' }" @click="switchTab('new')">最新</span>
+          <div class="divider"></div>
+          <span :class="{ active: sortType === 'hot' }" @click="switchTab('hot')">热门</span>
         </div>
 
-        <div v-if="latestArticles.length > 0" class="article-list">
-          <article v-for="article in latestArticles" :key="article._id" class="article-card">
-            <!-- 分类 -->
-            <div class="card-header" v-if="article.category">
-              <NuxtLink :to="`/category/${article.category._id}`" class="category-badge">
-                {{ article.category.name }}
+        <!-- 文章列表 -->
+        <div class="entry-list">
+          <div v-for="item in articles" :key="item._id" class="entry-item">
+            <div class="meta-row">
+              <!-- 显示真实作者 -->
+              <NuxtLink :to="`/user/${item.author?._id}`" class="author-link">
+                {{ item.author?.nickname || '牛马用户' }}
               </NuxtLink>
+              <span class="date">{{ formatTime(item.createdAt) }}</span>
+              <span class="tag" v-if="item.category">{{ item.category.name }}</span>
             </div>
-            <!-- 标题和简介 -->
-            <div class="card-body">
-              <h3 class="card-title">
-                <NuxtLink :to="`/article/${article._id}`">{{ article.title }}</NuxtLink>
-              </h3>
-              <p class="card-excerpt">{{ article.content.substring(0, 80).replace(/[#*`]/g, '') }}...</p>
-            </div>
-            <!-- 底部信息 -->
-            <div class="card-footer">
-              <div class="meta-info">
-                <!-- 原有的日期 -->
-                <span class="meta-item">📅 {{ formatDate(article.createdAt) }}</span>
 
-                <!-- 原有的阅读量 -->
-                <span class="meta-item">👁️ {{ article.views }}</span>
+            <div class="content-wrapper">
+              <div class="text-box">
+                <NuxtLink :to="`/article/${item._id}`" class="title">{{ item.title }}</NuxtLink>
+                <p class="abstract">{{ item.content.substring(0, 80).replace(/[#*`]/g, '') }}...</p>
 
-                <!-- ★★★ 新增：点赞数 ★★★ -->
-                <span class="meta-item">❤ {{ article.likeCount || 0 }}</span>
-
-                <!-- ★★★ 新增：评论数 ★★★ -->
-                <span class="meta-item">💬 {{ article.commentCount || 0 }}</span>
+                <div class="action-row">
+                  <span class="action">👁 {{ item.views }}</span>
+                  <span class="action">👍 {{ item.likes?.length || 0 }}</span>
+                  <!-- 暂时还没有评论数接口，先写0 -->
+                  <span class="action">💬 0</span>
+                </div>
               </div>
-
-              <NuxtLink :to="`/article/${article._id}`" class="read-more">阅读 →</NuxtLink>
             </div>
-          </article>
+          </div>
         </div>
+      </main>
 
-        <!-- 空状态 -->
-        <div v-else class="empty-state">
-          <p>暂无数据</p>
-        </div>
+      <!-- 右侧侧边栏 -->
+      <aside class="sidebar-right">
+        <!-- 签到卡片 (保持不变) -->
+        <SignCard />
 
-        <!-- ★★★ 分页按钮区域 ★★★ -->
-        <div class="pagination" v-if="total > limit">
-          <button class="page-btn" :disabled="page <= 1" @click="changePage(page - 1)">← 上一页</button>
-
-          <span class="page-info">{{ page }}</span>
-
-          <button class="page-btn" :disabled="page * limit >= total" @click="changePage(page + 1)">下一页 →</button>
-        </div>
-      </div>
-
-      <!-- === 右侧：侧边栏 === -->
-      <aside class="sidebar-col">
-        <div class="sidebar-widget">
-          <h3 class="widget-title">🔥 热门推荐</h3>
-          <ul v-if="hotArticles.length > 0" class="hot-list">
-            <li v-for="(article, index) in hotArticles" :key="article._id" class="hot-item">
-              <span class="rank-num" :class="{ 'top-3': index < 3 }">{{ index + 1 }}</span>
-              <div class="hot-content">
-                <NuxtLink :to="`/article/${article._id}`" class="hot-title">{{ article.title }}</NuxtLink>
-                <span class="hot-views">{{ article.views }} 阅读</span>
-              </div>
+        <!-- ★★★ 真实作者榜 ★★★ -->
+        <!-- ★★★ 真实作者榜 ★★★ -->
+        <div class="card rank-card">
+          <div class="card-title">🎖️ 作者榜</div>
+          <ul class="rank-list">
+            <li v-for="author in authorRank" :key="author._id" class="rank-item">
+              <!-- 增加 NuxtLink 跳转 -->
+              <NuxtLink :to="`/user/${author._id}`" class="rank-link">
+                <img :src="author.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="avatar" />
+                <div class="info">
+                  <div class="name">{{ author.nickname }}</div>
+                  <div class="desc">
+                    <!-- 显示职位，没有则显示阅读量 -->
+                    {{ author.jobTitle || `获得 ${author.totalViews} 阅读` }}
+                  </div>
+                </div>
+              </NuxtLink>
             </li>
+            <!-- 空状态 -->
+            <li v-if="!authorRank || authorRank.length === 0" class="empty-rank">虚位以待...</li>
           </ul>
-          <div v-else class="empty-widget">暂无推荐</div>
+        </div>
+
+        <!-- 广告图 -->
+        <div class="card ad-card">
+          <img src="https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/img/default.640d9a7.png" />
+          <span class="ad-tag">广告</span>
         </div>
       </aside>
     </div>
@@ -132,252 +142,354 @@
 </template>
 
 <style scoped>
-  /* 复用之前的 Hero、Grid、Card 样式... */
-  /* 为了节省篇幅，这里只写新增的分页样式，你可以把之前的样式复制回来，或者我把分页样式列在下面 */
-
-  /* === 分页样式 === */
-  .pagination {
-    margin-top: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .page-btn {
-    padding: 10px 20px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    cursor: pointer;
-    color: #555;
-    font-size: 14px;
-    transition: 0.2s;
-  }
-
-  .page-btn:hover:not(:disabled) {
-    border-color: #764ba2;
-    color: #764ba2;
-    background: #fcfaff;
-  }
-
-  .page-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #f5f5f5;
-  }
-
-  .page-info {
-    font-weight: bold;
-    color: #333;
-  }
-
-  /* 补充之前的样式，保证页面不崩 */
-  .hero {
-    background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 60px 20px;
-    text-align: center;
-    margin-bottom: 40px;
-  }
-  .hero h1 {
-    margin: 0 0 10px 0;
+  .juejin-home {
+    background: #f4f5f5;
+    min-height: 100vh;
+    padding-top: 20px;
   }
   .container {
-    max-width: 1200px;
+    max-width: 1300px; /* 掘金标准宽度 */
     margin: 0 auto;
-    padding: 0 20px 60px;
-  }
-  .main-layout {
     display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 40px;
+    grid-template-columns: 180px 1fr 260px; /* 经典三栏宽度 */
+    gap: 20px;
+    position: relative;
   }
-  @media (max-width: 900px) {
-    .main-layout {
-      grid-template-columns: 1fr;
-    }
+
+  /* === 左侧导航 === */
+  .sidebar-left {
+    position: sticky;
+    top: 80px;
+    height: fit-content;
   }
-  .section-header {
+  .nav-list {
+    background: white;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 17px;
+    font-size: 16px;
+    color: #515767;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover {
+    background: #f4f5f5;
+    color: #1e80ff;
+  }
+  .nav-item.active {
+    background: #eaf2ff;
+    color: #1e80ff;
+    font-weight: 500;
+  }
+  .icon {
+    margin-right: 10px;
+    font-size: 18px;
+    width: 20px;
+    text-align: center;
+  }
+
+  /* === 中间列表 === */
+  .main-list {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Tab 头部 */
+  .list-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e4e6eb;
+    display: flex;
+    align-items: center;
+  }
+  .list-header span {
+    font-size: 14px;
+    color: #909090;
+    cursor: pointer;
+    padding: 0 10px;
+  }
+  .list-header span.active {
+    color: #1e80ff;
+  }
+  .list-header span:hover {
+    color: #1e80ff;
+  }
+  .list-header .divider {
+    width: 1px;
+    height: 14px;
+    background: #e4e6eb;
+    margin: 0 5px;
+  }
+
+  /* 文章项 */
+  .entry-item {
+    padding: 20px;
+    border-bottom: 1px solid #e4e6eb;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .entry-item:hover {
+    background: #fafafa;
+  }
+  .meta-row {
+    font-size: 13px;
+    color: #86909c;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+  }
+  .meta-row .date::before {
+    content: '';
+    margin: 0 5px;
+    border-left: 1px solid #e5e6eb;
+    height: 10px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .tag {
+    margin-left: auto;
+    background: #f2f3f5;
+    padding: 2px 6px;
+    border-radius: 2px;
+    color: #86909c;
+  }
+
+  .content-wrapper {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 10px;
   }
-  .section-title {
-    margin: 0;
-    font-size: 1.5rem;
-    color: #333;
+  .text-box {
+    flex: 1;
   }
-  .subtitle {
-    color: #999;
-    font-size: 0.9rem;
+  .title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #1d2129;
+    line-height: 24px;
+    display: block;
+    margin-bottom: 8px;
   }
-  .article-list {
+  .title:hover {
+    color: #1e80ff;
+    text-decoration: underline;
+  }
+  .abstract {
+    color: #86909c;
+    font-size: 13px;
+    line-height: 22px;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .action-row {
     display: flex;
-    flex-direction: column;
     gap: 20px;
   }
-  .article-card {
-    padding: 25px;
-    border-radius: 12px;
-
-    transition: 0.2s;
-    background: var(--bg-card); /* 替换 white */
-    border: 1px solid var(--border-color); /* 替换 #f0f0f0 */
-    color: var(--text-primary);
+  .action {
+    font-size: 13px;
+    color: #86909c;
+    display: flex;
+    align-items: center;
   }
-  .article-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  .action:hover {
+    color: #1e80ff;
+  }
+
+  /* === 右侧侧边栏 === */
+  .sidebar-right {
+    position: sticky;
+    top: 80px;
+    height: fit-content;
+  }
+  .card {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+
+  /* 签到卡片 */
+  .sign-card {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sign-header .title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1d2129;
+    margin-bottom: 4px;
+  }
+  .sign-header .desc {
+    font-size: 12px;
+    color: #86909c;
+  }
+  .btn-sign {
+    border: 1px solid #1e80ff;
+    color: #1e80ff;
+    background: white;
+    border-radius: 4px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .btn-sign:hover {
+    background: #eaf2ff;
+  }
+
+  /* 广告卡片 */
+  .ad-card {
+    position: relative;
+    height: 180px;
+    background: #eee;
+  }
+  .ad-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ad-tag {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  /* 排行榜 */
+  .rank-card {
+    padding: 16px;
   }
   .card-title {
-    margin: 10px 0;
-    font-size: 1.3rem;
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid #e4e6eb;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
   }
-  .card-title a {
+  .rank-list {
+    list-style: none;
+    padding: 0;
+  }
+  .rank-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .rank-item .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  .rank-item .name {
+    font-size: 14px;
     color: #333;
   }
-  .card-title a:hover {
-    color: #007bff;
-  }
-  .card-excerpt {
-    color: #666;
-    font-size: 0.95rem;
-    line-height: 1.6;
-  }
-  .card-footer {
-    margin-top: 15px;
-    display: flex;
-    justify-content: space-between;
-    color: #999;
-    font-size: 0.85rem;
-  }
-  .category-badge {
-    background: #eef2ff;
-    color: #4f46e5;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: bold;
-  }
-  .read-more {
-    color: #007bff;
+  .rank-item .desc {
+    font-size: 12px;
+    color: #909090;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
   }
 
-  /* 侧边栏样式 */
-  .sidebar-col {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
+  /* 响应式 */
+  @media (max-width: 960px) {
+    .container {
+      grid-template-columns: 1fr;
+    }
+    .sidebar-left,
+    .sidebar-right {
+      display: none;
+    } /* 手机端只显示文章流 */
   }
-  .sidebar-widget {
-    padding: 25px;
-    border-radius: 12px;
-    background: var(--bg-card); /* 替换 white */
-    border: 1px solid var(--border-color);
-  }
-  .widget-title {
-    margin-top: 0;
-    border-left: 4px solid #764ba2;
-    padding-left: 10px;
-  }
-  .hot-list {
+  /* 作者榜样式优化 */
+  .rank-list {
     list-style: none;
     padding: 0;
     margin: 0;
   }
-  .hot-item {
-    display: flex;
+  .rank-item {
     margin-bottom: 15px;
   }
-  .rank-num {
-    width: 22px;
-    height: 22px;
-    background: #eee;
-    text-align: center;
-    border-radius: 4px;
+  /* 让整个区域可点击 */
+  .rank-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none; /* 去掉下划线 */
+    color: inherit;
+  }
+  .rank-link:hover .name {
+    color: #1e80ff; /* 悬停名字变蓝 */
+  }
+
+  .rank-item .avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
     margin-right: 10px;
-    font-size: 12px;
-    line-height: 22px;
-    flex-shrink: 0;
+    object-fit: cover;
+    border: 1px solid #f1f1f1;
   }
-  .rank-num.top-3 {
-    background: #ff4757;
-    color: white;
+  .info {
+    flex: 1;
+    overflow: hidden; /* 防止名字太长溢出 */
   }
-  .hot-content {
-    display: flex;
-    flex-direction: column;
-  }
-  .hot-title {
-    font-size: 0.95rem;
-    color: #444;
+  .rank-item .name {
+    font-size: 14px;
+    color: #333;
     margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .hot-title:hover {
-    color: #007bff;
+  .rank-item .desc {
+    font-size: 12px;
+    color: #909090;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .hot-views {
-    font-size: 0.75rem;
+  .empty-rank {
+    text-align: center;
     color: #999;
+    font-size: 12px;
+    padding: 10px 0;
   }
-  /* 3. 字体颜色 */
-  .card-title a {
-    color: var(--text-primary);
-  }
-  .card-excerpt {
-    color: var(--text-secondary);
-  }
-  .hot-title {
-    color: var(--text-primary);
-  }
-  .widget-title {
-    color: var(--text-primary);
-  }
-  .section-title {
-    color: var(--text-primary);
-  }
-  .subtitle {
-    color: var(--text-secondary);
+  .author-link {
+    color: #515767; /* 默认深灰 */
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
   }
 
-  /* 4. 分页按钮 */
-  .page-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-  }
-  .page-btn:disabled {
-    background: var(--bg-body); /* 禁用时用深色一点的背景 */
-    opacity: 0.5;
-  }
-  .page-info {
-    color: var(--text-primary);
-  }
-  .meta-info {
-    display: flex;
-    align-items: center;
-    gap: 15px; /* 图标之间的间距 */
-    color: #999;
-    font-size: 0.85rem;
+  .author-link:hover {
+    color: #1e80ff; /* 悬停变蓝 */
   }
 
-  .meta-item {
-    display: flex;
-    align-items: center;
-    gap: 4px; /* 图标和数字之间的微小间距 */
-  }
-
-  /* 针对点赞加个颜色 (可选) */
-  .meta-item:nth-child(3) {
-    /* color: #ff6b6b;  如果你想让爱心一直是红色的 */
-  }
-
-  /* 鼠标悬停时的效果 (可选) */
-  .article-card:hover .meta-info {
-    color: #666; /* 卡片悬停时文字变深一点 */
+  /* 分隔符样式优化 */
+  .author-link::after {
+    content: '·';
+    margin: 0 6px;
+    color: #e5e6eb;
   }
 </style>

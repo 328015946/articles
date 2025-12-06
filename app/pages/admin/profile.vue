@@ -45,7 +45,7 @@
   const handleProfileUpdate = async () => {
     profileLoading.value = true
     try {
-      const res = await $fetch('/api/user/profile', {
+      const res = await $fetch('/api/users/profile', {
         method: 'PUT',
         body: {
           nickname: profileForm.nickname,

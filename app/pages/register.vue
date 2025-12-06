@@ -10,7 +10,7 @@
       const res = await $fetch('/api/auth/register', { method: 'POST', body: form.value })
       user.value = res.user // 更新全局状态
       alert('注册成功！')
-      router.push('/admin') // 注意：，这里以后可能要改成 /admin
+      router.push('/') // 注意：，这里以后可能要改成 /admin
     } catch (err) {
       alert(err.data?.message || '注册失败')
     }

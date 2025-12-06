@@ -1,3 +1,11 @@
+<!--
+ * @Author: zengxiaobin
+ * @Date: 2025-12-05 11:44:21
+ * @LastEditors: xiaobin
+ * @LastEditTime: 2025-12-06 09:52:25
+ * @FilePath: \xiao-nuxt\app\app.vue
+ * @Description: 注释
+-->
 <!-- app.vue -->
 <script setup>
   const user = useUser()
@@ -18,6 +26,11 @@
   *::before,
   *::after {
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+  a {
+    text-decoration: none;
   }
   /* === 1. 定义 Light (默认) 主题变量 === */
   :root {

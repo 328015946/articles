@@ -28,7 +28,7 @@
 
       // 2. 跳转
       // 如果是管理员，去后台；如果是普通用户，去个人中心(或首页)
-      router.push('/admin')
+      router.push('/')
     } catch (err) {
       // 显示后端返回的错误信息
       errorMsg.value = err.data?.message || '登录失败，请检查账号密码'

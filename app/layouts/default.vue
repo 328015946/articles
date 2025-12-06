@@ -1,32 +1,25 @@
 <!-- layouts/default.vue -->
 <script setup>
-  // 获取所有分类
-  const { data: categories } = await useFetch('/api/categories')
-  const user = useUser() // 获取全局用户状态
+  const user = useUser()
   const router = useRouter()
 
-  // === 2. 搜索逻辑 ===
+  // === 搜索逻辑 ===
   const searchKeyword = ref('')
   const handleSearch = () => {
     if (!searchKeyword.value.trim()) return
     router.push(`/search?q=${searchKeyword.value}`)
-    // 搜索后清空 (可选)
-    // searchKeyword.value = ''
   }
-  // === 新增：获取未读消息数 ===
+
+  // === 获取未读消息 ===
   const { data: unreadData, refresh: refreshUnread } = await useFetch('/api/notifications/unread', {
-    // 只有当用户登录了才去查
     immediate: !!user.value
   })
 
-  // 监听用户状态：如果用户登录/登出，重新获取未读数
   watch(user, newUser => {
-    if (newUser) {
-      refreshUnread()
-    } else {
-      unreadData.value = { count: 0 }
-    }
+    if (newUser) refreshUnread()
+    else unreadData.value = { count: 0 }
   })
+
   const logout = () => {
     const token = useCookie('auth_token')
     token.value = null
@@ -37,368 +30,253 @@
 
 <template>
   <div class="app-layout">
-    <!-- 1. 顶部导航条 -->
-    <!-- 把类名改成 main-navbar 更通用 -->
-    <nav class="main-navbar">
-      <div class="nav-container">
-        <!-- 左侧 Logo -->
-        <div class="nav-left">
-          <NuxtLink to="/" class="brand-logo">Blogs</NuxtLink>
-        </div>
-
-        <!-- 中间 菜单 -->
-        <div class="nav-center">
-          <NuxtLink to="/" class="nav-item" active-class="active">首页</NuxtLink>
-
-          <!-- 循环渲染分类 -->
-          <NuxtLink
-            v-for="c in categories"
-            :key="c._id"
-            :to="`/category/${c._id}`"
-            class="nav-item"
-            active-class="active">
-            {{ c.name }}
+    <!-- 顶部导航条 -->
+    <header class="juejin-header">
+      <div class="header-container">
+        <div class="header-left">
+          <NuxtLink to="/" class="logo">
+            <img
+              src="https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/e08da34488b114bd4c665ba2fa520a31.svg"
+              alt="Logo"
+              class="logo-img" />
           </NuxtLink>
+          <nav class="main-nav">
+            <NuxtLink to="/" class="nav-link" active-class="active">首页</NuxtLink>
+            <NuxtLink to="/pins" class="nav-link" active-class="active">沸点</NuxtLink>
+            <!-- ★★★ 注意：这里的分类已经删掉了，移到了首页左侧 ★★★ -->
+          </nav>
         </div>
 
-        <!-- 右侧 后台 -->
-        <!-- 右侧区域 -->
-        <div class="nav-right">
-          <!-- ★★★ 新增：搜索框 ★★★ -->
-          <div class="search-wrapper">
+        <div class="header-right">
+          <!-- 搜索框 -->
+          <div class="search-box">
             <input
               type="text"
               v-model="searchKeyword"
               @keyup.enter="handleSearch"
-              placeholder="搜索..."
+              placeholder="探索技术世界"
               class="search-input" />
-            <span class="search-icon" @click="handleSearch">🔍</span>
-          </div>
-          <!-- ★★★ 新增：通知铃铛 ★★★ -->
-          <!-- 只有登录了才显示 -->
-          <NuxtLink v-if="user" to="/admin/notifications" class="icon-btn" title="消息通知">
-            <span class="bell-icon">🔔</span>
-            <!-- 小红点 -->
-            <span v-if="unreadData?.count > 0" class="badge">
-              {{ unreadData.count > 99 ? '99+' : unreadData.count }}
-            </span>
-          </NuxtLink>
-          <!-- 1. 如果已登录 -->
-          <div v-if="user" class="user-menu">
-            <span class="welcome">你好, {{ user.nickname }}</span>
-            <NuxtLink to="/admin" class="nav-btn">个人中心</NuxtLink>
-            <button @click="logout" class="nav-btn outline">退出</button>
+            <div class="search-icon-btn" @click="handleSearch">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </div>
           </div>
 
-          <!-- 2. 如果没登录 -->
-          <div v-else class="auth-btns">
-            <NuxtLink to="/login" class="nav-text">登录</NuxtLink>
-            <NuxtLink to="/register" class="nav-btn">注册</NuxtLink>
+          <!-- 创作者中心 -->
+          <NuxtLink to="/admin/publish" class="creator-btn">创作者中心</NuxtLink>
+
+          <!-- 用户区域 -->
+          <div v-if="user" class="user-area">
+            <NuxtLink to="/admin/notifications" class="icon-item notification">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span v-if="unreadData?.count > 0" class="badge">{{ unreadData.count }}</span>
+            </NuxtLink>
+
+            <div class="user-avatar-wrap">
+              <NuxtLink :to="`/user/${user._id || user.id}`">
+                <img :src="user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="avatar" />
+              </NuxtLink>
+              <div class="dropdown-menu">
+                <NuxtLink :to="`/user/${user._id || user.id}`" class="dd-item">我的主页</NuxtLink>
+                <NuxtLink to="/admin/profile" class="dd-item">设置</NuxtLink>
+                <div class="dd-divider"></div>
+                <div @click="logout" class="dd-item logout">退出登录</div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="auth-area">
+            <NuxtLink to="/login" class="login-btn">登录</NuxtLink>
+            <NuxtLink to="/register" class="register-btn">注册</NuxtLink>
           </div>
         </div>
       </div>
-    </nav>
+    </header>
 
-    <!-- 2. 页面内容 -->
-    <main class="main-content">
+    <main class="main-container">
       <slot />
     </main>
-
-    <!-- 3. 新的底部组件 -->
     <AppFooter />
   </div>
 </template>
 
-<style>
-  /* 全局设置 */
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background-color: #f8f9fa;
-  }
-  a {
-    text-decoration: none;
-    color: inherit;
-  }
-</style>
-
 <style scoped>
-  /* === 导航栏容器 === */
-  .main-navbar {
-    /* 使用和首页 Hero 一致的紫蓝渐变，保持视觉统一 */
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-    width: 100%;
-    height: 64px;
-    box-shadow: 0 4px 12px rgba(118, 75, 162, 0.25); /* 紫色系的投影 */
-    position: sticky; /* 吸顶效果 */
+  /* 保持你之前的 CSS 不变，或者直接用我上一条回答的 CSS */
+  /* 重点是删掉了 nav-link 的循环 */
+  /* 为了节省篇幅，这里复用上一条的 style，只展示修改了 template 的部分 */
+  .juejin-header {
+    background: white;
+    border-bottom: 1px solid #f1f1f1;
+    height: 60px;
+    position: sticky;
     top: 0;
     z-index: 999;
   }
-
-  .nav-container {
-    max-width: 1200px;
-    height: 100%;
+  .header-container {
+    max-width: 1440px;
     margin: 0 auto;
-    padding: 0 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* 左右两端对齐 */
-  }
-
-  /* === Logo === */
-  .brand-logo {
-    font-size: 20px;
-    font-weight: 800;
-    color: #fff;
-    letter-spacing: 1px;
-  }
-
-  /* === 中间菜单 === */
-  .nav-center {
-    display: flex;
-    gap: 30px; /* 菜单间距 */
-    height: 100%;
-  }
-
-  .nav-item {
-    color: rgba(255, 255, 255, 0.75); /* 未选中时稍微淡一点 */
-    font-size: 15px;
-    font-weight: 500;
     height: 100%;
     display: flex;
     align-items: center;
-    position: relative;
-    transition: all 0.3s;
+    justify-content: space-between;
+    padding: 0 24px;
   }
-
-  .nav-item:hover {
-    color: #fff;
-  }
-
-  /* === 选中状态 (小白条) === */
-  .nav-item.active {
-    color: #fff;
-    font-weight: 600;
-  }
-
-  /* 那个小白条 */
-  .nav-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 15px; /* 距离底部的位置 */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 20px;
-    height: 3px;
-    background-color: #fff;
-    border-radius: 4px;
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5); /* 给白条加一点发光效果 */
-  }
-
-  /* === 右侧按钮 === */
-  .nav-item-btn {
-    font-size: 14px;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    padding: 6px 15px;
-    border-radius: 20px;
-    transition: 0.2s;
-  }
-  .nav-item-btn:hover {
-    background: white;
-    color: #764ba2;
-  }
-
-  /* === 其他区域 === */
-  .main-content {
-    min-height: 80vh;
-  }
-  .footer {
-    text-align: center;
-    padding: 40px 0;
-    color: #999;
-    font-size: 13px;
-    border-top: 1px solid #eee;
-    margin-top: 40px;
-    background: white;
-  }
-
-  /* 补充样式 */
-  .user-menu,
-  .auth-btns {
+  .header-left {
     display: flex;
     align-items: center;
-    gap: 15px;
+    height: 100%;
   }
-  .welcome {
-    color: rgba(255, 255, 255, 0.8);
+  .logo-img {
+    height: 24px;
+    margin-right: 20px;
+    display: block;
+  }
+  .main-nav {
+    display: flex;
+    height: 100%;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    color: #515767;
     font-size: 14px;
-  }
-  .nav-text {
-    color: white;
-    font-size: 14px;
-    margin-right: 5px;
-  }
-  .nav-btn {
-    background: white;
-    color: #764ba2;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: bold;
-  }
-  .nav-btn.outline {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    color: white;
     cursor: pointer;
+    transition: color 0.2s;
+    height: 100%;
   }
-  /* === 右侧样式 === */
-  .nav-right {
+  .nav-link:hover,
+  .nav-link.active {
+    color: #1e80ff;
+  }
+  .header-right {
     display: flex;
     align-items: center;
-    gap: 15px; /* 拉开间距 */
+    gap: 20px;
   }
-
-  /* 搜索框样式 */
-  .search-wrapper {
-    position: relative;
+  .search-box {
     display: flex;
     align-items: center;
+    background: #f2f3f5;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0 4px 0 12px;
+    height: 36px;
+    width: 260px;
+    transition: all 0.2s;
+  }
+  .search-box:focus-within {
+    background: white;
+    border-color: #1e80ff;
+    width: 320px;
   }
   .search-input {
-    background: rgba(255, 255, 255, 0.15);
     border: none;
-    border-radius: 20px;
-    padding: 6px 12px 6px 30px; /* 左边留空给图标 */
-    color: white;
-    font-size: 13px;
-    width: 120px;
-    transition: width 0.3s;
-  }
-  .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
-  .search-input:focus {
-    width: 180px; /* 聚焦时变长 */
-    background: rgba(255, 255, 255, 0.25);
+    background: transparent;
+    flex: 1;
+    font-size: 14px;
+    color: #333;
+    height: 100%;
     outline: none;
   }
-  .search-icon {
-    position: absolute;
-    left: 8px;
-    font-size: 12px;
+  .search-icon-btn {
+    padding: 6px;
+    color: #515767;
     cursor: pointer;
-    opacity: 0.7;
+    display: flex;
+    align-items: center;
   }
-
-  /* 主题切换按钮 */
-  .theme-btn {
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 0 5px;
-    transition: transform 0.2s;
-  }
-  .theme-btn:hover {
-    transform: scale(1.2);
-  }
-
-  /* 登录按钮样式沿用你的 */
-  .nav-btn {
-    background: white;
-    color: #764ba2;
-    padding: 5px 15px;
-    border-radius: 15px;
-    font-size: 12px;
-    border: none;
-    cursor: pointer;
-  }
-  .nav-btn.outline {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.6);
+  .creator-btn {
+    background: #1e80ff;
     color: white;
-  }
-  .nav-text {
-    color: white;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 3px;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
   }
-  .footer {
-    text-align: center;
-    padding: 20px;
-    color: var(--text-secondary);
-    background: var(--bg-card);
-    margin-top: 40px;
+  .user-area {
+    display: flex;
+    align-items: center;
+    gap: 20px;
   }
-  /* === 新增：铃铛按钮样式 === */
-  .icon-btn {
+  .icon-item {
+    color: #8a919f;
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
+    cursor: pointer;
+  }
+  .badge {
+    position: absolute;
+    top: -6px;
+    left: 12px;
+    background: #ff4d4f;
+    color: white;
+    font-size: 10px;
+    padding: 0 4px;
+    height: 16px;
+    line-height: 16px;
+    border-radius: 8px;
+    border: 2px solid white;
+  }
+  .user-avatar-wrap {
+    position: relative;
+    height: 36px;
+    cursor: pointer;
+  }
+  .avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    transition: 0.3s;
-    text-decoration: none; /* 去掉下划线 */
+    object-fit: cover;
+    background: #eee;
   }
-  .icon-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .bell-icon {
-    font-size: 20px;
-    /* 简单的摇晃动画 */
-  }
-  .icon-btn:hover .bell-icon {
-    animation: bell-shake 0.5s ease;
-  }
-
-  /* === 新增：小红点样式 === */
-  .badge {
+  .dropdown-menu {
     position: absolute;
-    top: 2px;
-    right: 0px;
-    background-color: #ff4d4f; /* 鲜艳的红色 */
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-    height: 16px;
-    min-width: 16px;
-    line-height: 16px;
-    text-align: center;
-    border-radius: 10px; /* 胶囊形状 */
-    padding: 0 4px;
-    box-shadow: 0 0 0 2px var(--accent-color); /* 这里的颜色要和导航栏背景色一致，形成镂空效果 */
-    box-sizing: border-box;
+    top: 100%;
+    right: 0;
+    width: 140px;
+    background: white;
+    border: 1px solid #ebebeb;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 8px 0;
+    display: none;
+    flex-direction: column;
   }
-
-  /* 定义摇晃动画 */
-  @keyframes bell-shake {
-    0% {
-      transform: rotate(0);
-    }
-    15% {
-      transform: rotate(15deg);
-    }
-    30% {
-      transform: rotate(-15deg);
-    }
-    45% {
-      transform: rotate(10deg);
-    }
-    60% {
-      transform: rotate(-10deg);
-    }
-    75% {
-      transform: rotate(5deg);
-    }
-    85% {
-      transform: rotate(-5deg);
-    }
-    100% {
-      transform: rotate(0);
-    }
+  .user-avatar-wrap:hover .dropdown-menu {
+    display: flex;
+  }
+  .dd-item {
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #515767;
+    transition: 0.2s;
+  }
+  .dd-item:hover {
+    background: #f4f5f5;
+    color: #1e80ff;
+  }
+  .auth-area {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .login-btn {
+    color: #1e80ff;
+    padding: 0 10px;
+  }
+  .register-btn {
+    color: #515767;
+    padding: 0 10px;
   }
 </style>

@@ -42,34 +42,30 @@ export default defineEventHandler(async event => {
     await Article.findByIdAndUpdate(articleId, { $addToSet: { likes: userId } })
 
     // ============================================
-    // ★★★ 新增：发送点赞通知 ★★★
-    // ============================================
+    // ★★★ 发送通知 (修复版) ★★★
     try {
-      // 1. 不是自己给自己点赞
       if (article.author.toString() !== userId) {
-        // 2. 防止刷屏：检查是否已经发过这条通知了
-        const exist = await Notification.findOne({
+        // 防止重复通知
+        const exists = await Notification.findOne({
           recipient: article.author,
           sender: userId,
           type: 'like',
           article: article._id
         })
 
-        // 3. 如果没发过，才创建
-        if (!exist) {
+        if (!exists) {
           await Notification.create({
-            recipient: article.author, // 文章作者
-            sender: userId, // 点赞人
-            type: 'like', // 类型
-            article: article._id, // 关联文章
-            content: '' // 点赞一般不需要额外内容
+            recipient: article.author,
+            sender: userId,
+            type: 'like',
+            article: article._id,
+            content: ''
           })
         }
       }
-    } catch (error) {
-      console.error('发送点赞通知失败:', error)
+    } catch (e) {
+      console.error('点赞通知失败:', e)
     }
-    // ============================================
 
     return { liked: true }
   }

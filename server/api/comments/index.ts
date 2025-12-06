@@ -1,3 +1,11 @@
+/*
+ * @Author: zengxiaobin
+ * @Date: 2025-12-05 18:50:21
+ * @LastEditors: xiaobin
+ * @LastEditTime: 2025-12-06 12:23:39
+ * @FilePath: \xiao-nuxt\server\api\comments\index.ts
+ * @Description: 注释
+ */
 // server/api/comments/index.ts
 import Comment from '../../models/Comment'
 import Article from '../../models/Article' // ★ 新增引入
@@ -42,28 +50,22 @@ export default defineEventHandler(async event => {
     })
 
     // ============================================
-    // ★★★ 新增：发送消息通知逻辑 ★★★
-    // ============================================
+    // 2. ★★★ 发送通知 (修复版) ★★★
     try {
-      // 1. 查出这篇文章是谁写的
       const article = await Article.findById(body.articleId)
-
-      // 2. 只有当 "文章存在" 且 "作者不是评论人自己" 时，才发通知
-      // 注意：MongoDB 的 ID 是对象，比较时最好转成字符串
+      // 只有文章存在，且作者不是我自己
       if (article && article.author.toString() !== decoded.id) {
         await Notification.create({
-          recipient: article.author, // 接收者：文章作者
-          sender: decoded.id, // 发送者：当前评论人
-          type: 'comment', // 类型：评论
+          recipient: article.author,
+          sender: decoded.id,
+          type: 'comment', // 类型：文章评论
           article: article._id, // 关联文章
-          content: body.content.substring(0, 50) // 截取前50个字作为提示
+          content: body.content.substring(0, 50)
         })
       }
-    } catch (error) {
-      // 发送通知失败不应该影响评论本身的发布，所以 catch 住不抛错，只打印日志
-      console.error('创建通知失败:', error)
+    } catch (e) {
+      console.error('文章评论通知发送失败:', e)
     }
-    // ============================================
 
     // 返回带上作者信息，方便前端直接渲染
     return await newComment.populate('author', 'nickname')
