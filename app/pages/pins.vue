@@ -3,7 +3,7 @@
   const user = useUser()
   const sortType = ref('new')
 
-  // 1. 获取列表 (监听 sortType)
+  // 1. 获取列表
   const { data: pins, refresh } = await useFetch('/api/pins', {
     query: computed(() => ({ sort: sortType.value })),
     deep: true
@@ -13,65 +13,48 @@
   const { data: userStats } = await useFetch('/api/user/stats', { immediate: !!user.value })
   const { data: featuredPins } = await useFetch('/api/pins/featured')
 
-  // ==========================================
-  // ★★★ 发布逻辑 (含图片 & 表情) ★★★
-  // ==========================================
+  // === 发布逻辑 ===
   const content = ref('')
-  const imageList = ref([]) // 存图片 URL
+  const imageList = ref([])
   const isPublishing = ref(false)
   const showEmoji = ref(false)
-
-  // 常用 Emoji 列表
   const emojis = ['😂', '🙌', '👍', '❤️', '🔥', '🥰', '🤔', '👀', '😭', '🎉', '🚀', '🐛', '💻', '☕', '🐶']
 
-  // 插入表情
   const addEmoji = char => {
     content.value += char
     showEmoji.value = false
   }
 
-  // 处理图片上传
   const handleUpload = async e => {
     const file = e.target.files[0]
     if (!file) return
     if (imageList.value.length >= 9) return alert('最多上传9张图片')
-
     const formData = new FormData()
     formData.append('file', file)
-
     try {
-      // 假设你有一个 /api/upload 接口返回 { url: '/uploads/xxx.jpg' }
       const res = await $fetch('/api/upload', { method: 'POST', body: formData })
       if (res.url) imageList.value.push(res.url)
     } catch (err) {
       alert('图片上传失败')
     } finally {
-      e.target.value = '' // 清空 input，允许重复传同一张
+      e.target.value = ''
     }
   }
 
-  // 删除预览图片
-  const removeImage = index => {
-    imageList.value.splice(index, 1)
-  }
+  const removeImage = index => imageList.value.splice(index, 1)
 
   const handlePublish = async () => {
     if (!user.value) return navigateTo('/login')
     if (!content.value.trim() && imageList.value.length === 0) return alert('内容不能为空')
-
     isPublishing.value = true
     try {
       await $fetch('/api/pins', {
         method: 'POST',
-        body: {
-          content: content.value,
-          images: imageList.value // ★ 传图片给后端
-        }
+        body: { content: content.value, images: imageList.value }
       })
-      // 重置状态
       content.value = ''
       imageList.value = []
-      refresh() // 刷新列表
+      refresh()
     } catch (e) {
       alert('发布失败')
     } finally {
@@ -79,8 +62,23 @@
     }
   }
 
-  // ... (点赞、评论、回复等逻辑保持不变，为了节省篇幅省略，请保留你原有的 handleLike, toggleComments, submitComment 等函数) ...
-  // === 点赞逻辑 (保留) ===
+  // === 图片预览逻辑 (新增) ===
+  const showViewer = ref(false)
+  const previewImage = ref('')
+
+  const openPreview = url => {
+    previewImage.value = url
+    showViewer.value = true
+    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden'
+  }
+
+  const closePreview = () => {
+    showViewer.value = false
+    previewImage.value = ''
+    if (typeof document !== 'undefined') document.body.style.overflow = ''
+  }
+
+  // === 互动逻辑 (保持不变) ===
   const handleLike = async pin => {
     if (!user.value) return navigateTo('/login')
     const oldIsLiked = pin.isLiked
@@ -93,7 +91,7 @@
       pin.likeCount = oldIsLiked ? pin.likeCount + 1 : pin.likeCount - 1
     }
   }
-  // === 评论相关逻辑 (保留你之前的 toggleComments, handleReply, submitComment, formatTime) ...
+
   const toggleComments = async pin => {
     pin.showComments = !pin.showComments
     if (pin.showComments && !pin.commentsList) {
@@ -107,11 +105,13 @@
       }
     }
   }
+
   const handleReply = (pin, comment) => {
     if (!user.value) return navigateTo('/login')
     pin.replyTarget = comment
     if (!pin.showComments) toggleComments(pin)
   }
+
   const submitComment = async pin => {
     if (!user.value) return navigateTo('/login')
     if (!pin.inputContent?.trim()) return alert('写点什么吧')
@@ -135,6 +135,7 @@
       pin.submitting = false
     }
   }
+
   const formatTime = dateStr => {
     if (!dateStr) return ''
     return new Date(dateStr).toLocaleString()
@@ -144,7 +145,7 @@
 <template>
   <div class="pins-layout">
     <div class="container">
-      <!-- 1. 左侧导航 (支持切换) -->
+      <!-- 左侧 -->
       <aside class="left-col">
         <div class="nav-menu">
           <a class="nav-item" :class="{ active: sortType === 'new' }" @click="sortType = 'new'">🕒 最新</a>
@@ -152,77 +153,61 @@
         </div>
       </aside>
 
-      <!-- 2. 中间内容 -->
+      <!-- 中间 -->
       <main class="center-col">
         <!-- 发布框 -->
         <div class="publish-box">
           <textarea v-model="content" placeholder="快和掘友一起分享新鲜事！" :disabled="isPublishing"></textarea>
-
-          <!-- 图片预览区域 -->
           <div class="img-preview-grid" v-if="imageList.length > 0">
             <div v-for="(img, idx) in imageList" :key="idx" class="preview-item">
               <img :src="img" />
               <span class="remove-btn" @click="removeImage(idx)">×</span>
             </div>
           </div>
-
           <div class="action-bar">
             <div class="tools">
-              <!-- 表情按钮 -->
               <div class="tool-wrap">
                 <span class="tool-btn" @click="showEmoji = !showEmoji">😊 表情</span>
-                <!-- 表情弹窗 -->
                 <div v-if="showEmoji" class="emoji-picker" @mouseleave="showEmoji = false">
                   <span v-for="e in emojis" :key="e" @click="addEmoji(e)">{{ e }}</span>
                 </div>
               </div>
-
-              <!-- 图片按钮 (绑定 input) -->
               <label class="tool-btn">
                 🖼️ 图片
                 <input type="file" accept="image/*" hidden @change="handleUpload" />
               </label>
             </div>
-
-            <button class="btn-pub" :disabled="isPublishing" @click="handlePublish">
-              {{ isPublishing ? '发布中...' : '发布' }}
-            </button>
+            <button class="btn-pub" :disabled="isPublishing" @click="handlePublish">发布</button>
           </div>
         </div>
 
-        <!-- 沸点列表 -->
+        <!-- 列表 -->
         <div class="pin-list">
           <div v-for="pin in pins" :key="pin._id" class="pin-card">
-            <!-- 头部 -->
             <div class="pin-header">
               <NuxtLink :to="`/user/${pin.author._id}`">
                 <img :src="pin.author?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="avatar" />
               </NuxtLink>
               <div class="info">
                 <NuxtLink :to="`/user/${pin.author._id}`" class="name">{{ pin.author?.nickname }}</NuxtLink>
-                <span class="meta">
-                  <!-- 显示职位或时间 -->
-                  {{ pin.author?.jobTitle || '前端工程师' }} · {{ formatTime(pin.createdAt) }}
-                </span>
+                <span class="meta">{{ pin.author?.jobTitle || '前端工程师' }} · {{ formatTime(pin.createdAt) }}</span>
               </div>
             </div>
 
-            <!-- 内容 -->
             <div class="pin-content">{{ pin.content }}</div>
 
-            <!-- ★★★ 图片展示 (九宫格) ★★★ -->
+            <!-- 图片区 (加了点击事件) -->
             <div class="pin-images" v-if="pin.images && pin.images.length > 0">
               <div
                 v-for="(img, idx) in pin.images"
                 :key="idx"
                 class="img-item"
-                :class="{ single: pin.images.length === 1 }">
-                <!-- 这里可以用 v-viewer 或简单的点击放大，暂时只展示 -->
+                :class="{ single: pin.images.length === 1 }"
+                @click.stop="openPreview(img)">
                 <img :src="img" />
               </div>
             </div>
 
-            <!-- 操作栏 (保持不变) -->
             <div class="pin-actions">
               <div class="action-item"><span class="icon">↗</span> 分享</div>
               <div class="action-item" :class="{ active: pin.showComments }" @click="toggleComments(pin)">
@@ -233,9 +218,7 @@
               </div>
             </div>
 
-            <!-- 评论区 (保持不变) -->
             <div class="comment-area" v-if="pin.showComments">
-              <!-- ... 复用之前的评论区代码 ... -->
               <div class="comment-input-box" v-if="user">
                 <img :src="user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="my-avatar" />
                 <div class="input-wrapper">
@@ -270,24 +253,18 @@
         </div>
       </main>
 
-      <!-- 3. 右侧信息 (已对接) -->
+      <!-- 右侧 -->
       <aside class="right-col">
         <div class="user-card" v-if="user">
           <div class="uc-header">
-            <!-- ★★★ 修改点：头像增加跳转 ★★★ -->
             <NuxtLink :to="`/user/${user._id || user.id}`" class="avatar-link">
               <img :src="user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="uc-avatar" />
             </NuxtLink>
-
             <div class="uc-info">
-              <!-- ★★★ 修改点：昵称增加跳转 ★★★ -->
-              <NuxtLink :to="`/user/${user._id || user.id}`" class="uc-name">
-                {{ user.nickname }}
-              </NuxtLink>
+              <NuxtLink :to="`/user/${user._id || user.id}`" class="uc-name">{{ user.nickname }}</NuxtLink>
               <div class="uc-job">{{ user.jobTitle || '前端工程师' }}</div>
             </div>
           </div>
-
           <div class="uc-stats">
             <div class="stat-item">
               <div class="count">{{ userStats?.pinCount || 0 }}</div>
@@ -303,7 +280,6 @@
             </div>
           </div>
         </div>
-
         <div class="featured-card">
           <div class="card-title">精选沸点</div>
           <div class="featured-list">
@@ -315,11 +291,19 @@
         </div>
       </aside>
     </div>
+
+    <!-- ★★★ 全屏图片查看器 ★★★ -->
+    <div v-if="showViewer" class="image-viewer" @click="closePreview">
+      <div class="viewer-content">
+        <img :src="previewImage" @click.stop />
+        <span class="close-btn" @click="closePreview">×</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-  /* 原有布局样式保持不变 ... */
+  /* 原有样式保持不变... */
   .pins-layout {
     background: #f4f5f5;
     min-height: 100vh;
@@ -333,8 +317,7 @@
     grid-template-columns: 180px 1fr 240px;
     align-items: start;
   }
-
-  /* 左侧导航 */
+  /* ... (复制你之前的 nav-menu, publish-box 等样式) ... */
   .nav-menu {
     background: white;
     border-radius: 4px;
@@ -359,7 +342,6 @@
     font-weight: 500;
   }
 
-  /* 发布框增强样式 */
   .publish-box {
     background: white;
     padding: 20px;
@@ -381,8 +363,6 @@
     background: white;
     border-color: #1e80ff;
   }
-
-  /* 图片预览网格 */
   .img-preview-grid {
     display: flex;
     gap: 10px;
@@ -414,7 +394,6 @@
     cursor: pointer;
     font-size: 14px;
   }
-
   .action-bar {
     display: flex;
     justify-content: space-between;
@@ -436,8 +415,6 @@
     margin-right: 15px;
     display: inline-block;
   }
-
-  /* 表情弹窗 */
   .emoji-picker {
     position: absolute;
     top: 25px;
@@ -462,7 +439,6 @@
     background: #f0f0f0;
     border-radius: 4px;
   }
-
   .btn-pub {
     background: #1e80ff;
     color: white;
@@ -476,7 +452,6 @@
     cursor: not-allowed;
   }
 
-  /* 沸点列表 */
   .pin-card {
     background: white;
     padding: 20px 20px 0 20px;
@@ -511,8 +486,6 @@
     margin-bottom: 10px;
     white-space: pre-wrap;
   }
-
-  /* 沸点图片展示 (简单的网格) */
   .pin-images {
     display: flex;
     gap: 5px;
@@ -535,8 +508,7 @@
     width: 200px;
     height: auto;
     max-height: 300px;
-  } /* 单张图显示大一点 */
-
+  }
   .pin-actions {
     display: flex;
     border-top: 1px solid #e4e6eb;
@@ -556,7 +528,6 @@
     color: #1e80ff;
   }
 
-  /* 评论区样式 (复用之前的样式，略) */
   .comment-area {
     background: #f9fafb;
     margin: 0 -20px;
@@ -622,10 +593,8 @@
     cursor: pointer;
   }
 
-  /* 右侧 */
   .user-card,
-  .featured-card,
-  .topic-card {
+  .featured-card {
     background: white;
     border-radius: 4px;
     margin-bottom: 20px;
@@ -644,10 +613,19 @@
   }
   .uc-name {
     font-weight: bold;
+    font-size: 16px;
+    color: #252933;
+    text-decoration: none;
+    cursor: pointer;
+    display: block;
+  }
+  .uc-name:hover {
+    color: #1e80ff;
   }
   .uc-job {
     font-size: 12px;
     color: #999;
+    margin-top: 4px;
   }
   .uc-stats {
     display: flex;
@@ -662,7 +640,10 @@
     font-size: 12px;
     color: #999;
   }
-
+  .avatar-link {
+    display: block;
+    cursor: pointer;
+  }
   .card-title {
     font-weight: bold;
     border-bottom: 1px solid #eee;
@@ -684,42 +665,7 @@
     font-size: 12px;
     color: #999;
   }
-  .topic-item {
-    color: #1e80ff;
-    font-size: 13px;
-    margin-bottom: 5px;
-    cursor: pointer;
-  }
-  /* 修改 pages/pins.vue 的 <style scoped> */
 
-  /* 右侧头像链接 */
-  .avatar-link {
-    display: block; /* 消除图片底部间隙 */
-    cursor: pointer;
-  }
-
-  /* 右侧昵称链接 */
-  .uc-name {
-    font-weight: 600;
-    font-size: 16px;
-    color: #252933;
-    text-decoration: none; /* 去掉下划线 */
-    display: block;
-    transition: 0.2s;
-    cursor: pointer;
-  }
-
-  /* 悬停效果 */
-  .uc-name:hover {
-    color: #1e80ff; /* 悬停变蓝 */
-  }
-
-  /* 保持原有样式... */
-  .uc-job {
-    font-size: 13px;
-    color: #8a919f;
-    margin-top: 4px;
-  }
   @media (max-width: 900px) {
     .container {
       grid-template-columns: 1fr;
@@ -727,6 +673,60 @@
     .left-col,
     .right-col {
       display: none;
+    }
+  }
+
+  /* === 新增：全屏查看器样式 === */
+  .image-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: fadeIn 0.2s ease;
+  }
+  .viewer-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .viewer-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    cursor: default;
+  }
+  .viewer-content .close-btn {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    color: white;
+    font-size: 40px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: 0.3s;
+  }
+  .viewer-content .close-btn:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 </style>
