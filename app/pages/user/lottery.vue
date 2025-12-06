@@ -96,7 +96,8 @@
       <aside class="left-nav">
         <div class="nav-title">个人中心</div>
         <NuxtLink to="/user/coin" class="nav-item">💰 我的资产</NuxtLink>
-        <NuxtLink to="/user/lottery" class="nav-item active">🎁 幸运抽奖</NuxtLink>
+        <NuxtLink to="/user/lottery" class="nav-item">🎁 幸运抽奖</NuxtLink>
+        <NuxtLink to="/user/shop" class="nav-item">🛍️ 牛马商城</NuxtLink>
       </aside>
 
       <!-- 右侧内容 -->

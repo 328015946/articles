@@ -114,8 +114,8 @@
                   <img :src="user.avatar" class="dd-avatar" />
                   <div class="dd-info">
                     <div class="dd-name">{{ user.nickname }}</div>
-                    <NuxtLink to="/user/coin" style="color: inherit; text-decoration: none">
-                      <span class="ore-icon">💎</span> 牛马币: {{ myStats?.coin || 0 }} >
+                    <NuxtLink to="/user/coin" style="color: inherit; text-decoration: none" class="dd-ore">
+                      <span>💎</span> 牛马币: {{ myStats?.coin || 0 }} >
                     </NuxtLink>
                   </div>
                 </div>

@@ -104,16 +104,60 @@
       alert('操作失败')
     }
   }
+  // ... 原有代码 ...
+
+  // ==========================================
+  // ★★★ 新增：样式生成逻辑 (修复背景和颜色不显示) ★★★
+  // ==========================================
+
+  // 1. 生成 Header 背景样式
+  const headerStyle = computed(() => {
+    const theme = userInfo.value?.theme
+    console.log('背景', theme)
+    if (!theme || !theme.bg) return {}
+
+    const bgValue = theme.bg
+
+    // 判断是 "渐变色/纯色" 还是 "图片URL"
+    // 如果包含 'gradient' (渐变) 或 '#' (颜色代码) 或 'rgb'，直接作为 background
+    if (bgValue.includes('gradient') || bgValue.startsWith('#') || bgValue.startsWith('rgb')) {
+      return {
+        background: bgValue,
+        color: 'white' // 有背景时文字变白
+      }
+    }
+
+    // 否则认为是图片 URL，需要包裹 url()
+    return {
+      backgroundImage: `url(${bgValue})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      color: 'white'
+    }
+  })
+
+  // 2. 生成昵称颜色样式
+  const nameStyle = computed(() => {
+    const color = userInfo.value?.theme?.color
+    if (!color) return {}
+    return { color: color }
+  })
 </script>
 
 <template>
   <div class="user-profile-page">
     <div class="container" v-if="userInfo">
       <!-- 1. 顶部个人信息卡片 -->
-      <div class="profile-header">
-        <img :src="userInfo.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="p-avatar" />
+      <div class="profile-header" :style="headerStyle">
+        <div class="avatar-container">
+          <!-- 绑定头像框 -->
+          <img v-if="userInfo.theme?.frame" :src="userInfo.theme.frame" class="p-frame" />
+          <img v-else :src="userInfo.avatar || 'https://api.dicebear.com/7.x/avataaars/svg'" class="p-avatar" />
+        </div>
         <div class="p-info">
-          <h1 class="p-name">{{ userInfo.nickname }}</h1>
+          <h1 class="p-name" :style="nameStyle">
+            {{ userInfo.nickname }}
+          </h1>
           <div class="p-job">
             <span v-if="userInfo.jobTitle">💼 {{ userInfo.jobTitle }}</span>
             <span v-if="userInfo.company"> | {{ userInfo.company }}</span>
@@ -631,5 +675,38 @@
   .btn-small.following {
     background: #f4f5f5;
     color: #8a919f;
+  }
+  /* 修改 pages/user/[id].vue 的 style */
+
+  /* 头像容器：为了定位头像框 */
+  .avatar-container {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    margin-right: 24px;
+  }
+  .p-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid white; /* 默认白边 */
+  }
+  /* 头像框 */
+  .p-frame {
+    position: absolute;
+    top: -18%;
+    left: -18%; /* 根据框的大小微调 */
+    width: 136%;
+    height: 136%;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* 如果有背景图，文字变白，增加阴影防止看不清 */
+  .profile-header[style*='background'] .p-name,
+  .profile-header[style*='background'] .p-job,
+  .profile-header[style*='background'] .p-intro {
+    color: white;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 </style>

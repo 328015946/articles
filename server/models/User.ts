@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-05 11:51:15
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-06 10:03:25
+ * @LastEditTime: 2025-12-06 18:20:04
  * @FilePath: \xiao-nuxt\server\models\User.ts
  * @Description: 注释
  */
@@ -21,6 +21,15 @@ const schema = new mongoose.Schema({
   lastSignDate: { type: Date }, // 上次签到日期 (用于判断今天是否已签)
   signStreak: { type: Number, default: 0 }, // 连续签到天数
   // ===================
+  // ★★★ 新增：已购买的装饰品 ID 列表 ★★★
+  inventory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Decoration' }],
+
+  // ★★★ 新增：当前佩戴的装饰 (直接存值，方便前端渲染) ★★★
+  theme: {
+    frame: { type: String, default: '' }, // 头像框 URL
+    bg: { type: String, default: '' }, // 背景图 URL 或 渐变色
+    color: { type: String, default: '' } // 昵称颜色
+  },
   createdAt: { type: Date, default: Date.now }
 })
 

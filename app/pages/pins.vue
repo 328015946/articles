@@ -42,28 +42,60 @@
   }
 
   const removeImage = index => imageList.value.splice(index, 1)
-
+  // === 新增：红包配置 ===
+  const showRpInput = ref(false) // 控制输入框显示
+  const rpConfig = ref({
+    coin: '', // 总金额
+    count: '' // 包的个数
+  })
   const handlePublish = async () => {
     if (!user.value) return navigateTo('/login')
+    // 基础校验
     if (!content.value.trim() && imageList.value.length === 0) return alert('内容不能为空')
+
+    // ★★★ 新增：红包校验 ★★★
+    let redPacketData = null
+    if (showRpInput.value) {
+      const coin = Number(rpConfig.value.coin)
+      const count = Number(rpConfig.value.count)
+
+      // 简单的校验
+      if (!coin || !count) return alert('请输入红包金额和个数')
+      if (coin < count) return alert('每人至少分 1 个牛马币')
+      if (coin > (userStats.value?.coin || 0)) return alert('余额不足，请去搬砖')
+
+      redPacketData = { coin, count }
+    }
 
     isPublishing.value = true
     try {
-      // ★★★ 核心修复：加上 const res =  ★★★
       const res = await $fetch('/api/pins', {
         method: 'POST',
-        body: { content: content.value, images: imageList.value }
+        body: {
+          content: content.value,
+          images: imageList.value,
+          redPacket: redPacketData // ★ 传给后端
+        }
       })
 
-      // 现在 res 有值了，这里就不会报错了
       alert(res.message || '发布成功')
 
+      // 重置所有状态
       content.value = ''
       imageList.value = []
+      showRpInput.value = false
+      rpConfig.value = { coin: '', count: '' }
+
       refresh()
+
+      // 刷新余额 (因为发红包扣钱了)
+      const { data: newStats } = await useFetch('/api/users/stats')
+      if (userStats.value && newStats.value) {
+        userStats.value.coin = newStats.value.coin
+      }
     } catch (e) {
-      console.error(e) // 建议加上打印，方便以后排查是网络错误还是代码错误
-      alert('发布失败')
+      console.error(e)
+      alert(e.data?.message || '发布失败')
     } finally {
       isPublishing.value = false
     }
@@ -147,6 +179,29 @@
     if (!dateStr) return ''
     return new Date(dateStr).toLocaleString()
   }
+  const grabRedPacket = async pin => {
+    if (!user.value) return navigateTo('/login')
+
+    try {
+      const res = await $fetch('/api/pins/grab', {
+        method: 'POST',
+        body: { pinId: pin._id }
+      })
+
+      if (res.success) {
+        alert(`🎉 ${res.message}`)
+        // 手动更新前端显示
+        pin.redPacket.remainCount--
+        // 刷新一下个人余额
+        const { data } = await useFetch('/api/user/stats')
+        if (userStats.value) userStats.value.coin = data.value.coin
+      } else {
+        alert(res.message)
+      }
+    } catch (e) {
+      alert('网络拥堵，没抢到')
+    }
+  }
 </script>
 
 <template>
@@ -171,19 +226,44 @@
               <span class="remove-btn" @click="removeImage(idx)">×</span>
             </div>
           </div>
+          <!-- ★★★ 新增：红包设置面板 (放在 action-bar 上面) ★★★ -->
+          <div v-if="showRpInput" class="rp-settings">
+            <div class="rp-row">
+              <span class="rp-label">总金额</span>
+              <input type="number" v-model="rpConfig.coin" placeholder="0" class="rp-input" />
+              <span class="rp-unit">牛马币</span>
+            </div>
+            <div class="rp-row">
+              <span class="rp-label">红包个数</span>
+              <input type="number" v-model="rpConfig.count" placeholder="0" class="rp-input" />
+              <span class="rp-unit">个</span>
+            </div>
+            <div class="rp-tip">
+              当前余额: <span class="highlight">{{ userStats?.coin || 0 }}</span>
+            </div>
+          </div>
           <div class="action-bar">
             <div class="tools">
+              <!-- 表情按钮 -->
               <div class="tool-wrap">
                 <span class="tool-btn" @click="showEmoji = !showEmoji">😊 表情</span>
                 <div v-if="showEmoji" class="emoji-picker" @mouseleave="showEmoji = false">
                   <span v-for="e in emojis" :key="e" @click="addEmoji(e)">{{ e }}</span>
                 </div>
               </div>
+
+              <!-- 图片按钮 -->
               <label class="tool-btn">
                 🖼️ 图片
                 <input type="file" accept="image/*" hidden @change="handleUpload" />
               </label>
+
+              <!-- ★★★ 新增：红包开关 ★★★ -->
+              <span class="tool-btn" :class="{ active: showRpInput }" @click="showRpInput = !showRpInput">
+                🧧 发红包
+              </span>
             </div>
+
             <button class="btn-pub" :disabled="isPublishing" @click="handlePublish">发布</button>
           </div>
         </div>
@@ -197,12 +277,29 @@
               </NuxtLink>
               <div class="info">
                 <NuxtLink :to="`/user/${pin.author._id}`" class="name">{{ pin.author?.nickname }}</NuxtLink>
-                <span class="meta">{{ pin.author?.jobTitle || '前端工程师' }} · {{ formatTime(pin.createdAt) }}</span>
+                <span class="meta">{{ pin.author?.jobTitle || '' }} · {{ formatTime(pin.createdAt) }}</span>
               </div>
             </div>
 
             <div class="pin-content">{{ pin.content }}</div>
-
+            <!-- 在 pin-content 下面添加 -->
+            <div v-if="pin.redPacket && pin.redPacket.totalCoin > 0" class="red-packet-box">
+              <div class="rp-left">
+                <span class="rp-icon">🧧</span>
+              </div>
+              <div class="rp-center">
+                <div class="rp-title">牛马福利红包</div>
+                <div class="rp-status">
+                  <span v-if="pin.redPacket.remainCount > 0">
+                    剩余 {{ pin.redPacket.remainCount }}/{{ pin.redPacket.totalCount }} 个
+                  </span>
+                  <span v-else>已抢光</span>
+                </div>
+              </div>
+              <button class="rp-btn" :class="{ disabled: pin.redPacket.remainCount <= 0 }" @click="grabRedPacket(pin)">
+                {{ pin.redPacket.remainCount > 0 ? '抢' : '空' }}
+              </button>
+            </div>
             <!-- 图片区 (加了点击事件) -->
             <div class="pin-images" v-if="pin.images && pin.images.length > 0">
               <div
@@ -269,7 +366,7 @@
             </NuxtLink>
             <div class="uc-info">
               <NuxtLink :to="`/user/${user._id || user.id}`" class="uc-name">{{ user.nickname }}</NuxtLink>
-              <div class="uc-job">{{ user.jobTitle || '前端工程师' }}</div>
+              <div class="uc-job">{{ user.jobTitle || '' }}</div>
             </div>
           </div>
           <div class="uc-stats">
@@ -735,5 +832,108 @@
     to {
       opacity: 1;
     }
+  }
+
+  .red-packet-box {
+    background: #ff4d4f;
+    color: white;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .rp-icon {
+    font-size: 30px;
+    margin-right: 10px;
+  }
+  .rp-center {
+    flex: 1;
+  }
+  .rp-title {
+    font-weight: bold;
+    font-size: 15px;
+  }
+  .rp-status {
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  .rp-btn {
+    background: #f9cb28;
+    color: #d33c3e;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: 0.2s;
+  }
+  .rp-btn:hover {
+    transform: scale(1.1);
+  }
+  .rp-btn.disabled {
+    background: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  /* 红包设置面板 */
+  .rp-settings {
+    background: #fff7e6;
+    border: 1px solid #ffd591;
+    padding: 15px;
+    border-radius: 4px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .rp-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .rp-label {
+    width: 70px;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .rp-input {
+    width: 100px;
+    padding: 5px 10px;
+    border: 1px solid #ffc069;
+    border-radius: 4px;
+    margin-right: 10px;
+    outline: none;
+  }
+  .rp-input:focus {
+    border-color: #ff9c6e;
+    box-shadow: 0 0 0 2px rgba(255, 156, 110, 0.2);
+  }
+
+  .rp-unit {
+    font-size: 13px;
+    color: #888;
+  }
+
+  .rp-tip {
+    font-size: 12px;
+    color: #8a919f;
+    margin-top: 5px;
+  }
+  .highlight {
+    color: #ff4d4f;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  /* 激活状态的按钮 */
+  .tool-btn.active {
+    color: #ff4d4f;
+    font-weight: bold;
   }
 </style>

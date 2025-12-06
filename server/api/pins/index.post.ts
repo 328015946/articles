@@ -1,3 +1,11 @@
+/*
+ * @Author: zengxiaobin
+ * @Date: 2025-12-06 11:23:01
+ * @LastEditors: xiaobin
+ * @LastEditTime: 2025-12-06 18:04:02
+ * @FilePath: \xiao-nuxt\server\api\pins\index.post.ts
+ * @Description: 注释
+ */
 import Pin from '../../models/Pin'
 import Follow from '../../models/Follow'
 import Notification from '../../models/Notification'
@@ -12,17 +20,38 @@ export default defineEventHandler(async event => {
   const decoded: any = jwt.verify(token, config.jwtSecret)
 
   const body = await readBody(event)
-  const { content, images } = body
+  const { content, images, redPacket } = body
 
   if (!content && (!images || images.length === 0)) {
     throw createError({ statusCode: 400, message: '内容不能为空' })
   }
+  // 1. 如果带了红包，先检查余额并扣款
+  let rpData = {}
+  if (redPacket && redPacket.coin > 0 && redPacket.count > 0) {
+    const user = await User.findById(decoded.id)
+    if (user.coin < redPacket.coin) {
+      throw createError({ statusCode: 400, message: '余额不足，发不起红包' })
+    }
 
+    // 扣款
+    user.coin -= redPacket.coin
+    await user.save()
+
+    // 构造存入 Pin 的数据
+    rpData = {
+      totalCoin: redPacket.coin,
+      totalCount: redPacket.count,
+      remainCoin: redPacket.coin,
+      remainCount: redPacket.count,
+      grabbedBy: []
+    }
+  }
   // 1. 创建沸点 (这一步成功了，数据就进库了)
   const newPin = await Pin.create({
     content: body.content,
     images: images || [],
-    author: decoded.id
+    author: decoded.id,
+    redPacket: rpData // 存入红包数据
   })
 
   // 2. 定义返回给前端的消息 (默认成功)
