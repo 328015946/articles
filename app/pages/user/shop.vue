@@ -62,6 +62,30 @@
       alert(`${actionName}失败`)
     }
   }
+  const showMegaInput = ref(false)
+  const megaContent = ref('')
+  const megaStyle = ref('normal')
+
+  const sendMegaphone = async () => {
+    if (!megaContent.value) return alert('说点什么吧')
+    try {
+      const res = await $fetch('/api/shop/megaphone', {
+        method: 'POST',
+        body: { content: megaContent.value, style: megaStyle.value }
+      })
+      if (res.success) {
+        alert('广播已发出，全服用户即将看到！')
+        showMegaInput.value = false
+        refreshStats()
+        // 手动触发一次全局刷新，让自己立马看到
+        refreshNuxtData('global-megaphone')
+      } else {
+        alert(res.message)
+      }
+    } catch (e) {
+      alert('余额不足或发送失败')
+    }
+  }
 </script>
 
 <template>
@@ -72,8 +96,9 @@
         <div class="nav-title">个人中心</div>
         <NuxtLink to="/user/coin" class="nav-item">💰 我的资产</NuxtLink>
         <!-- ★★★ 高亮当前页 ★★★ -->
-        <NuxtLink to="/user/shop" class="nav-item active">🛍️ 牛马商城</NuxtLink>
+
         <NuxtLink to="/user/lottery" class="nav-item">🎁 幸运抽奖</NuxtLink>
+        <NuxtLink to="/user/shop" class="nav-item active">🛍️ 牛马商城</NuxtLink>
       </aside>
 
       <!-- 右侧内容 -->
@@ -83,6 +108,7 @@
           <div class="my-balance">
             当前余额: <span>{{ userStats?.coin || 0 }}</span> 币
           </div>
+          <button class="btn-mega" @click="showMegaInput = true">📣 发全服广播</button>
         </div>
 
         <div class="shop-grid">
@@ -115,6 +141,27 @@
                 <button v-else class="btn-use" @click="toggleEquip(item)">装备</button>
               </template>
             </div>
+          </div>
+        </div>
+        <!-- ★★★ 广播输入弹窗 ★★★ -->
+        <div v-if="showMegaInput" class="modal-mask" @click.self="showMegaInput = false">
+          <div class="modal-content mega-modal">
+            <h3>📣 发送全服广播</h3>
+            <textarea v-model="megaContent" placeholder="输入你想对全站说的话..."></textarea>
+
+            <div class="style-select">
+              <label :class="{ active: megaStyle === 'normal' }">
+                <input type="radio" value="normal" v-model="megaStyle" hidden /> 普通 (200币)
+              </label>
+              <label :class="{ active: megaStyle === 'vip' }" class="vip-label">
+                <input type="radio" value="vip" v-model="megaStyle" hidden /> 土豪金 (500币)
+              </label>
+              <label :class="{ active: megaStyle === 'urgent' }" class="urgent-label">
+                <input type="radio" value="urgent" v-model="megaStyle" hidden /> 红色加急 (1000币)
+              </label>
+            </div>
+
+            <button class="btn-send" @click="sendMegaphone">立即发送</button>
           </div>
         </div>
       </main>
@@ -330,5 +377,72 @@
   .btn-unequip:hover {
     background: #e5e6eb;
     color: #4e5969;
+  }
+  .btn-mega {
+    background: linear-gradient(90deg, #ff9c6e, #ff4d4f);
+    color: white;
+    border: none;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: 15px;
+    box-shadow: 0 4px 10px rgba(255, 77, 79, 0.3);
+  }
+  .btn-mega:hover {
+    transform: scale(1.05);
+  }
+
+  .mega-modal {
+    width: 400px;
+    padding: 20px;
+  }
+  .mega-modal textarea {
+    width: 100%;
+    height: 80px;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin: 15px 0;
+    border-radius: 4px;
+  }
+  .style-select {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .style-select label {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .style-select label.active {
+    border-color: #1e80ff;
+    background: #e6f7ff;
+    color: #1e80ff;
+    font-weight: bold;
+  }
+  .vip-label.active {
+    background: #fff1b8;
+    color: #d48806;
+    border-color: #d48806;
+  }
+  .urgent-label.active {
+    background: #fff1f0;
+    color: #f5222d;
+    border-color: #f5222d;
+  }
+
+  .btn-send {
+    width: 100%;
+    padding: 10px;
+    background: #1e80ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
   }
 </style>

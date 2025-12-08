@@ -102,12 +102,6 @@
 
       <!-- === 右侧侧边栏 (固定) === -->
       <aside class="sidebar-right">
-        <!-- 广告图 -->
-        <div class="card ad-card">
-          <img src="https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/img/default.640d9a7.png" />
-          <span class="ad-tag">广告</span>
-        </div>
-
         <!-- 推荐分类 -->
         <div class="card rank-card">
           <div class="card-title">🏷️ 相关推荐</div>
