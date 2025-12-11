@@ -62,7 +62,6 @@
     position: relative;
     background: #0f172a; /* 深邃蓝黑 */
     color: #94a3b8;
-    margin-top: 80px;
     overflow: hidden; /* 裁剪溢出的光晕 */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }

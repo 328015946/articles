@@ -149,6 +149,7 @@
     background: #f4f5f5;
     min-height: 100vh;
     padding-top: 20px;
+    padding-bottom: 40px;
   }
   .container {
     max-width: 1300px;

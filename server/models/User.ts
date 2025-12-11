@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-05 11:51:15
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-06 18:20:04
+ * @LastEditTime: 2025-12-10 09:51:15
  * @FilePath: \xiao-nuxt\server\models\User.ts
  * @Description: 注释
  */
@@ -30,7 +30,12 @@ const schema = new mongoose.Schema({
     bg: { type: String, default: '' }, // 背景图 URL 或 渐变色
     color: { type: String, default: '' } // 昵称颜色
   },
-  createdAt: { type: Date, default: Date.now }
+  // ★★★ 新增：最后活跃时间 ★★★
+  lastActiveAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
+  // ★★★ 新增：账号状态 ★★★
+  // 'active': 正常, 'banned': 封禁
+  status: { type: String, default: 'active', enum: ['active', 'banned'] }
 })
 
 export default mongoose.model('User', schema)

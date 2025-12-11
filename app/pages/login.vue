@@ -34,6 +34,20 @@
       errorMsg.value = err.data?.message || '登录失败，请检查账号密码'
     }
   }
+  // ★★★ 新增：检查退出原因并弹窗 ★★★
+  onMounted(() => {
+    // 1. 读取 Cookie
+    const logoutReason = useCookie('logout_reason')
+
+    // 2. 如果有值，说明是被强制踢出来的
+    if (logoutReason.value) {
+      // 弹出提示 (或者用更高级的 Toast/Dialog组件)
+      alert(logoutReason.value) // 效果： "账号已被封禁，禁止访问"
+
+      // 3. 销毁 Cookie，防止刷新再次弹出
+      logoutReason.value = null
+    }
+  })
 </script>
 
 <template>

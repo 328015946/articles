@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-05 14:51:20
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-05 14:51:36
+ * @LastEditTime: 2025-12-10 18:59:06
  * @FilePath: \xiao-nuxt\server\api\articles\my.get.ts
  * @Description: 注释
  */
@@ -14,9 +14,8 @@ export default defineEventHandler(async event => {
   const token = getCookie(event, 'auth_token')
   if (!token) throw createError({ statusCode: 401 })
 
-  const config = useRuntimeConfig()
-  const decoded: any = jwt.verify(token, config.jwtSecret)
+  const currentUser = await requireUser(event)
 
   // 2. 只查 author = 当前用户ID 的文章
-  return await Article.find({ author: decoded.id }).sort({ createdAt: -1 })
+  return await Article.find({ author: currentUser._id }).sort({ createdAt: -1 })
 })

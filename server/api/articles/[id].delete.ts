@@ -17,9 +17,8 @@ export default defineEventHandler(async event => {
   const token = getCookie(event, 'auth_token')
   if (!token) throw createError({ statusCode: 401 })
   const config = useRuntimeConfig()
-  const decoded: any = jwt.verify(token, config.jwtSecret)
 
-  const currentUser = await User.findById(decoded.id)
+  const currentUser = await requireUser(event)
   const article = await Article.findById(id)
 
   if (!article) return { success: true } // 本来就没了

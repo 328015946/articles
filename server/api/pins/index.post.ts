@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-06 11:23:01
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-06 18:04:02
+ * @LastEditTime: 2025-12-10 14:43:12
  * @FilePath: \xiao-nuxt\server\api\pins\index.post.ts
  * @Description: 注释
  */
@@ -17,7 +17,7 @@ export default defineEventHandler(async event => {
   const token = getCookie(event, 'auth_token')
   if (!token) throw createError({ statusCode: 401 })
   const config = useRuntimeConfig()
-  const decoded: any = jwt.verify(token, config.jwtSecret)
+  const user = await requireUser(event)
 
   const body = await readBody(event)
   const { content, images, redPacket } = body
@@ -28,14 +28,14 @@ export default defineEventHandler(async event => {
   // 1. 如果带了红包，先检查余额并扣款
   let rpData = {}
   if (redPacket && redPacket.coin > 0 && redPacket.count > 0) {
-    const user = await User.findById(decoded.id)
-    if (user.coin < redPacket.coin) {
+    const dbUser = await User.findById(user._id)
+    if (dbUser.coin < redPacket.coin) {
       throw createError({ statusCode: 400, message: '余额不足，发不起红包' })
     }
 
     // 扣款
-    user.coin -= redPacket.coin
-    await user.save()
+    dbUser.coin -= redPacket.coin
+    await dbUser.save()
 
     // 构造存入 Pin 的数据
     rpData = {
@@ -50,7 +50,7 @@ export default defineEventHandler(async event => {
   const newPin = await Pin.create({
     content: body.content,
     images: images || [],
-    author: decoded.id,
+    author: user._id,
     redPacket: rpData // 存入红包数据
   })
 
@@ -66,14 +66,14 @@ export default defineEventHandler(async event => {
     startOfDay.setHours(0, 0, 0, 0)
 
     const countToday = await Pin.countDocuments({
-      author: decoded.id,
+      author: user._id,
       createdAt: { $gte: startOfDay }
     })
 
     // 如果只有1条，说明刚才那条是首发
     if (countToday === 1) {
       if (User) {
-        await User.findByIdAndUpdate(decoded.id, { $inc: { coin: 100 } })
+        await User.findByIdAndUpdate(user._id, { $inc: { coin: 100 } })
         rewardMsg = ' (每日首发 +100 币)'
       } else {
         console.error('User 模型未定义，无法发放奖励')
@@ -89,11 +89,11 @@ export default defineEventHandler(async event => {
   // ==========================================
   const sendNotifications = async () => {
     try {
-      const followers = await Follow.find({ following: decoded.id })
+      const followers = await Follow.find({ following: user._id })
       if (followers.length > 0) {
         const notifications = followers.map(f => ({
           recipient: f.follower,
-          sender: decoded.id,
+          sender: user._id,
           type: 'new_pin',
           pin: newPin._id,
           content: body.content.substring(0, 30)

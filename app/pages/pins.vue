@@ -187,18 +187,24 @@
         method: 'POST',
         body: { pinId: pin._id }
       })
-
       if (res.success) {
         alert(`🎉 ${res.message}`)
-        // 手动更新前端显示
         pin.redPacket.remainCount--
-        // 刷新一下个人余额
-        const { data } = await useFetch('/api/user/stats')
-        if (userStats.value) userStats.value.coin = data.value.coin
+
+        // ✨ 修复：为刷新余额添加独立 try-catch
+        try {
+          const { data } = await useFetch('/api/user/stats')
+          if (userStats.value) userStats.value.coin = data.value.coin
+        } catch (statsError) {
+          console.error('刷新余额失败，但红包已抢到', statsError)
+          // 可选：显示更友好的提示（非阻塞式）
+          // alert('余额刷新稍慢，稍后自动更新')
+        }
       } else {
         alert(res.message)
       }
     } catch (e) {
+      // 此处仅处理抢红包请求的失败
       alert('网络拥堵，没抢到')
     }
   }
@@ -484,6 +490,9 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  .pin-list {
+    margin-bottom: 50px;
   }
   .remove-btn {
     position: absolute;

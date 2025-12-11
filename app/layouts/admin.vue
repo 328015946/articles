@@ -28,7 +28,10 @@
     '/admin/my-articles': '我的文章',
     '/admin/categories': '分类管理',
     '/admin/profile': '个人设置',
-    '/admin/notifications': '消息中心'
+    '/admin/notifications': '消息中心',
+    '/admin/questions': '题库审核',
+    '/admin/question-categories': '题库分类管理',
+    '/admin/users': '用户管理'
   }
 
   const currentTitle = computed(() => {
@@ -67,8 +70,16 @@
         <NuxtLink v-if="user?.role === 'admin'" to="/admin/categories" class="menu-item" active-class="active">
           📂 分类管理
         </NuxtLink>
-
+        <NuxtLink v-if="user?.role === 'admin'" to="/admin/users" class="menu-item" active-class="active">
+          👥 用户管理
+        </NuxtLink>
         <NuxtLink to="/admin/profile" class="menu-item" active-class="active"> ⚙️ 个人设置 </NuxtLink>
+        <NuxtLink v-if="user?.role === 'admin'" to="/admin/question-categories" class="menu-item" active-class="active">
+          📂 题库分类
+        </NuxtLink>
+        <NuxtLink v-if="user?.role === 'admin'" to="/admin/questions" class="menu-item" active-class="active">
+          📝 题库审核
+        </NuxtLink>
         <NuxtLink to="/admin/notifications" class="menu-item" active-class="active"> 🔔 消息中心 </NuxtLink>
 
         <div class="divider"></div>

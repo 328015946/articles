@@ -69,6 +69,9 @@
           <nav class="main-nav">
             <NuxtLink to="/" class="nav-link" active-class="active">首页</NuxtLink>
             <NuxtLink to="/pins" class="nav-link" active-class="active">沸点</NuxtLink>
+            <NuxtLink to="/interview" class="nav-link" active-class="active">🧠 题库</NuxtLink>
+            <NuxtLink to="/fishpond" class="nav-link" active-class="active">🐟 鱼塘</NuxtLink>
+            <NuxtLink to="/pet" class="nav-link" active-class="active">🐮 养牛</NuxtLink>
             <!-- ★★★ 注意：这里的分类已经删掉了，移到了首页左侧 ★★★ -->
           </nav>
         </div>
@@ -199,6 +202,8 @@
     margin-right: 20px;
     display: block;
   }
+  .main-container {
+  }
   .main-nav {
     display: flex;
     height: 100%;
@@ -285,8 +290,8 @@
     color: white;
     font-size: 10px;
     padding: 0 4px;
-    height: 16px;
-    line-height: 16px;
+    height: 18px;
+    line-height: 18px;
     border-radius: 8px;
     border: 2px solid white;
   }

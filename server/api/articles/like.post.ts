@@ -2,7 +2,7 @@
  * @Author: zengxiaobin
  * @Date: 2025-12-05 18:49:48
  * @LastEditors: xiaobin
- * @LastEditTime: 2025-12-06 17:41:51
+ * @LastEditTime: 2025-12-10 14:34:19
  * @FilePath: \xiao-nuxt\server\api\articles\like.post.ts
  * @Description: 注释
  */
@@ -17,8 +17,8 @@ export default defineEventHandler(async event => {
   const token = getCookie(event, 'auth_token')
   if (!token) throw createError({ statusCode: 401 })
   const config = useRuntimeConfig()
-  const decoded: any = jwt.verify(token, config.jwtSecret)
-  const userId = decoded.id
+  const user = await requireUser(event)
+  const userId = user._id // 获取 ID
 
   const body = await readBody(event)
   const articleId = body.articleId
